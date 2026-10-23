@@ -102,7 +102,7 @@
       "t.connectFail": "连接失败",
       "t.genFirst": "请先生成指令",
 
-      "cmd.body": `我有币安 Agentic Wallet，请在 BSC（binanceChainId {chain}）上帮我铸造 Agent AI（AGT）。
+      "cmd.body": `我有币安 Agentic Wallet，请在 BSC（binanceChainId {chain}）上帮我铸造 {name}。
 我的钱包地址：{addr}{idLine}
 
 规则：
@@ -111,12 +111,12 @@
 - 上一笔在链上确认成功后，再开始下一笔。
 - 任何一步 preview 报错或被拦截，就停下告诉我，不要改参数重试。
 
-第 1 笔：给 AGT 合约授权 {amountText} USDT（授权额度已够可跳过）
+第 1 笔：给 {name} 合约授权 {amountText} USDT（授权额度已够可跳过）
   合约: {uAddr}
   调用数据: {approveData}
   baw contract-call preview --binanceChainId {chain} --from {addr} --to {uAddr} --inputData {approveData} --json
 
-{tail}：调用 AGT 合约的 mint()，共 {count} 笔，每笔单独 preview + execute，每笔 {priceText} USDT 换 {perMint} AGT
+{tail}：调用 {name} 合约的 mint()，共 {count} 笔，每笔单独 preview + execute，每笔 {priceText} USDT 换 {perMint} {name}
   合约: {cAddr}
   调用数据: {mintSig}
   baw contract-call preview --binanceChainId {chain} --from {addr} --to {cAddr} --inputData {mintSig} --json`,
@@ -207,7 +207,7 @@
       "t.connectFail": "Connection failed",
       "t.genFirst": "Generate the command first",
 
-      "cmd.body": `I have a Binance Agentic Wallet. Please mint Agent AI (AGT) for me on BSC (binanceChainId {chain}).
+      "cmd.body": `I have a Binance Agentic Wallet. Please mint {name} for me on BSC (binanceChainId {chain}).
 My wallet address: {addr}{idLine}
 
 Rules:
@@ -216,12 +216,12 @@ Rules:
 - Only start the next transaction after the previous one is confirmed on chain.
 - If any preview errors out or gets blocked, stop and tell me. Do not retry with changed parameters.
 
-Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is already enough)
+Tx 1: approve {amountText} USDT to the {name} contract (skip if allowance is already enough)
   Contract: {uAddr}
   Input data: {approveData}
   baw contract-call preview --binanceChainId {chain} --from {addr} --to {uAddr} --inputData {approveData} --json
 
-{tail}: call mint() on the AGT contract, {count} tx total, each with its own preview + execute, {priceText} USDT for {perMint} AGT per mint
+{tail}: call mint() on the {name} contract, {count} tx total, each with its own preview + execute, {priceText} USDT for {perMint} {name} per mint
   Contract: {cAddr}
   Input data: {mintSig}
   baw contract-call preview --binanceChainId {chain} --from {addr} --to {cAddr} --inputData {mintSig} --json`,
@@ -530,6 +530,7 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
     const amount = price * BigInt(count);
     const amountText = Number(ethers.formatUnits(amount, dec)).toLocaleString("en-US", { maximumFractionDigits: 6 });
     const priceText = Number(ethers.formatUnits(price, dec)).toLocaleString("en-US", { maximumFractionDigits: 6 });
+    const name = info && info.name ? info.name : "Agent AI";
 
     const enc = ethers.AbiCoder.defaultAbiCoder().encode(["address", "uint256"], [cAddr, amount]);
     const approveData = "0x095ea7b3" + enc.slice(2);
@@ -543,7 +544,7 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
 
     return t("cmd.body", {
       chain: String(CHAIN_ID), addr: a, idLine, amountText, uAddr, approveData,
-      cAddr, mintSig: MINT_SIG, tail, count: String(count), priceText, perMint,
+      cAddr, mintSig: MINT_SIG, tail, count: String(count), priceText, perMint, name,
     });
   }
 
