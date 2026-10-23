@@ -23,6 +23,18 @@
       "hero.title": "持有币安 <em>Agent ID</em> 才能铸造",
       "hero.sub": "每次 <b>{price}</b> USDT 换 <b>{perMint}</b> 枚 {symbol}，单地址上限 <b>{limit}</b> 次。<br />下面填地址 → 自动检查资格 → 复制指令发给你的 AI 代理即可。",
       "hero.loading": "正在读取链上参数…",
+      "prog.title": "Mint 进度",
+      "prog.loading": "读取中…",
+      "prog.of": "已 mint {a} / {b} 份",
+      "prog.live": "进行中",
+      "prog.launched": "已开盘",
+      "prog.ended": "已结束",
+      "prog.raised": "已募资",
+      "prog.supply": "当前总供应",
+      "prog.left": "剩余份数",
+      "prog.deadline": "截止时间",
+      "prog.done": "已停止 mint",
+      "prog.cap": "{s} / 硬顶 {c}",
       "card.mint": "铸造区",
       "label.addr": "钱包地址 / .ai 名称",
       "ph.addr": "0x… 或 yourname.ai",
@@ -116,6 +128,18 @@
       "hero.title": "Only Binance <em>Agent ID</em> holders can mint",
       "hero.sub": "Each mint costs <b>{price}</b> USDT for <b>{perMint}</b> {symbol}, max <b>{limit}</b> per wallet.<br />Enter your address → auto-check eligibility → copy the command to your AI agent.",
       "hero.loading": "Loading on-chain parameters…",
+      "prog.title": "Mint progress",
+      "prog.loading": "Loading…",
+      "prog.of": "{a} / {b} mints",
+      "prog.live": "Live",
+      "prog.launched": "Launched",
+      "prog.ended": "Ended",
+      "prog.raised": "Raised",
+      "prog.supply": "Current supply",
+      "prog.left": "Remaining",
+      "prog.deadline": "Deadline",
+      "prog.done": "Mint closed",
+      "prog.cap": "{s} / cap {c}",
       "card.mint": "Mint",
       "label.addr": "Wallet address / .ai name",
       "ph.addr": "0x… or yourname.ai",
@@ -269,6 +293,7 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
     $("langBtn").textContent = lang === "zh" ? "EN" : "中";
     buildCountOptions();
     paintHero();
+    updateProgress();
     renderRows();
     if ($("cmd").value && resolved) $("cmd").value = buildCommand() || $("cmd").value;
   }
@@ -363,6 +388,9 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
         "function USDT() view returns (address)",
         "function AGENT_ID() view returns (address)",
         "function mintedBy(address) view returns (uint256)",
+        "function usdtRaised() view returns (uint256)",
+        "function totalSupply() view returns (uint256)",
+        "function MAX_SUPPLY() view returns (uint256)",
       ],
       p
     );
@@ -378,7 +406,14 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
         c.mintCount(), c.mintDeadline(), c.launched(), u.decimals(), c.AGENT_ID(),
       ]);
 
-    info = { c, u, contract: await c.getAddress(), name, symbol, price, perMint, maxPerWallet, maxMints, mintCount, deadline, launched, usdtDec, nft };
+    // 旧版合约可能没有 MAX_SUPPLY / usdtRaised，容错处理
+    const [usdtRaised, totalSupply, maxSupply] = await Promise.all([
+      c.usdtRaised().catch(() => price * mintCount),
+      c.totalSupply().catch(() => mintCount * perMint),
+      c.MAX_SUPPLY().catch(() => 0n),
+    ]);
+
+    info = { c, u, contract: await c.getAddress(), name, symbol, price, perMint, maxPerWallet, maxMints, mintCount, deadline, launched, usdtDec, nft, usdtRaised, totalSupply, maxSupply };
 
     heroVals = {
       price: ethers.formatUnits(price, usdtDec),
@@ -391,7 +426,37 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
     paintHero();
     $("usdt").value = await info.u.getAddress();
     $("nft").value = nft;
+    updateProgress();
     return info;
+  }
+
+  /* ---------- Mint 进度 ---------- */
+
+  function updateProgress() {
+    if (!info) return;
+    const { mintCount, maxMints, usdtRaised, totalSupply, maxSupply, price, deadline, launched, symbol, usdtDec } = info;
+    const pct = maxMints > 0n ? Number((mintCount * 1000n) / maxMints) / 10 : 0;
+    const left = maxMints > mintCount ? maxMints - mintCount : 0n;
+    const now = BigInt(Math.floor(Date.now() / 1000));
+
+    let cls = "live", txt = t("prog.live");
+    if (launched) { cls = "launched"; txt = t("prog.launched"); }
+    else if (now > deadline) { cls = "ended"; txt = t("prog.ended"); }
+
+    $("prog_bar").style.width = Math.min(100, pct) + "%";
+    $("prog_pct").textContent = pct.toFixed(1) + "%";
+    $("prog_of").textContent = t("prog.of", { a: String(mintCount), b: String(maxMints) });
+    $("prog_status").textContent = txt;
+    $("prog_status").className = "status " + cls;
+    $("prog_raised").textContent = Number(ethers.formatUnits(usdtRaised, usdtDec)).toLocaleString("en-US") + " USDT";
+    const supplyTxt = Number(ethers.formatUnits(totalSupply, 18)).toLocaleString("en-US") + " " + symbol;
+    $("prog_supply").textContent = maxSupply > 0n
+      ? t("prog.cap", { s: supplyTxt, c: Number(ethers.formatUnits(maxSupply, 18)).toLocaleString("en-US") })
+      : supplyTxt;
+    $("prog_left").textContent = String(left);
+    $("prog_deadline").textContent = launched
+      ? t("prog.done")
+      : new Date(Number(deadline) * 1000).toLocaleString(LANG === "zh" ? "zh-CN" : "en-US", { hour12: false });
   }
 
   /* ---------- 资格检查 ---------- */
@@ -543,6 +608,7 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
     heroVals = cached;
     heroReady = true;
   }
+  setInterval(() => loadInfo().catch(() => {}), 30000); // auto refresh mint progress
   applyLang(LANG);
   loadInfo().catch(() => {
     // 读不到链上参数时退回默认值，避免一直显示"读取中"

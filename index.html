@@ -30,6 +30,25 @@
 </section>
 
 <main>
+  <!-- Mint 进度 -->
+  <div class="card prog">
+    <div class="prog-head">
+      <h3 data-i18n="prog.title">Mint 进度</h3>
+      <span class="status" id="prog_status" data-i18n="prog.loading">读取中…</span>
+    </div>
+    <div class="bar"><i id="prog_bar"></i></div>
+    <div class="prog-line">
+      <b id="prog_pct">0%</b>
+      <span id="prog_of" data-i18n="prog.loading">读取中…</span>
+    </div>
+    <ul class="prog-stats">
+      <li><span data-i18n="prog.raised">已募资</span><b id="prog_raised">—</b></li>
+      <li><span data-i18n="prog.supply">当前总供应</span><b id="prog_supply">—</b></li>
+      <li><span data-i18n="prog.left">剩余份数</span><b id="prog_left">—</b></li>
+      <li><span data-i18n="prog.deadline">截止时间</span><b id="prog_deadline">—</b></li>
+    </ul>
+  </div>
+
   <div class="grid">
     <!-- 铸造区 -->
     <div class="card">

@@ -67,6 +67,32 @@ body {
 
 main { max-width: 1120px; margin: 0 auto; padding: 10px 24px 60px; }
 
+/* Mint 进度卡片 */
+.prog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.prog-head h3 { margin: 0 !important; }
+.prog .status {
+  font-size: 11.5px; padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+  background: rgba(240,185,11,.12); color: var(--gold); border: 1px solid rgba(240,185,11,.35);
+}
+.prog .status.live { background: rgba(33,192,122,.12); color: var(--ok); border-color: rgba(33,192,122,.4); }
+.prog .status.launched { background: rgba(33,192,122,.12); color: var(--ok); border-color: rgba(33,192,122,.4); }
+.prog .status.ended { background: rgba(255,107,107,.12); color: var(--danger); border-color: rgba(255,107,107,.4); }
+
+.bar { height: 10px; border-radius: 20px; background: #0b101c; border: 1px solid var(--line); overflow: hidden; }
+.bar i {
+  display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--gold), var(--gold-2));
+  border-radius: 20px; transition: width .5s ease;
+}
+.prog-line { display: flex; align-items: baseline; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.prog-line b { font-size: 18px; color: var(--gold); font-weight: 800; }
+
+.prog-stats { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0 0; padding: 0; }
+@media (max-width: 700px) { .prog-stats { grid-template-columns: repeat(2, 1fr); } }
+.prog-stats li { background: #0b101c; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+.prog-stats span { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+.prog-stats b { font-size: 13px; color: var(--text); word-break: break-all; }
+
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 
