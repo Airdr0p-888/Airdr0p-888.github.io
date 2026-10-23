@@ -204,7 +204,11 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
     },
   };
 
-  let LANG = localStorage.getItem("agt_lang") === "en" ? "en" : "zh";
+  // 换了 key：以前存过的语言偏好不再生效，一律从英文开始
+  const LANG_KEY = "agt_lang_v2";
+
+  let LANG = localStorage.getItem(LANG_KEY);
+  if (LANG !== "zh" && LANG !== "en") LANG = "en"; // 默认英文
 
   function t(key, vars) {
     let s = (I18N[LANG] && I18N[LANG][key]) || (I18N.zh[key] && I18N.zh[key]) || key;
@@ -257,13 +261,12 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
 
   function applyLang(lang) {
     LANG = lang;
-    localStorage.setItem("agt_lang", lang);
+    localStorage.setItem(LANG_KEY, lang);
     document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
     document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
     document.querySelectorAll("[data-i18n-html]").forEach((el) => (el.innerHTML = t(el.dataset.i18nHtml)));
     document.querySelectorAll("[data-i18n-ph]").forEach((el) => (el.placeholder = t(el.dataset.i18nPh)));
     $("langBtn").textContent = lang === "zh" ? "EN" : "中";
-    if (account) $("connectBtn").textContent = shortAddr(account);
     buildCountOptions();
     paintHero();
     renderRows();
@@ -490,22 +493,6 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
     toast(t("t.genOk"), "ok");
   }
 
-  /* ---------- 钱包 ---------- */
-
-  async function connect() {
-    if (!window.ethereum) return toast(t("t.noWallet"), "err");
-    try {
-      const accs = await window.ethereum.request({ method: "eth_requestAccounts" });
-      account = accs[0];
-      $("addr").value = account;
-      resolved = { addr: account, name: null };
-      $("connectBtn").textContent = shortAddr(account);
-      toast(t("t.walletOk"), "ok");
-    } catch (e) {
-      toast(e.message || t("t.connectFail"), "err");
-    }
-  }
-
   async function copyCmd() {
     const v = $("cmd").value;
     if (!v) return toast(t("t.genFirst"), "err");
@@ -546,7 +533,6 @@ Tx 1: approve {amountText} USDT to the AGT contract (skip if allowance is alread
     });
   });
 
-  $("connectBtn").addEventListener("click", connect);
   $("checkBtn").addEventListener("click", check);
   $("genBtn").addEventListener("click", generate);
   $("copyBtn").addEventListener("click", copyCmd);
