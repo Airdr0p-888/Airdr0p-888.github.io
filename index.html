@@ -19,6 +19,7 @@
   </div>
   <div class="topbar-actions">
     <button id="langBtn" class="btn btn-ghost" title="中文 / English">EN</button>
+    <button id="connectBtn" class="btn btn-primary" data-i18n="btn.connect">Connect Binance Wallet</button>
   </div>
 </header>
 
@@ -83,6 +84,12 @@
         <button id="checkBtn" class="btn btn-primary" data-i18n="btn.check">检查资格</button>
         <button id="genBtn" class="btn btn-ghost" data-i18n="btn.gen">生成 AI 指令</button>
       </div>
+
+      <div class="btn-row">
+        <button id="walletMintBtn" class="btn btn-primary" data-i18n="btn.walletMint">用钱包直接铸造</button>
+      </div>
+      <div id="wtx" class="hint"></div>
+      <p class="hint" data-i18n="wc.hint">连接币安钱包后可在网页直接铸造（approve + mint 两笔交易）</p>
 
       <div id="elig" class="elig"></div>
     </div>
@@ -193,7 +200,21 @@
 
 <div id="toast"></div>
 
+<!-- WalletConnect 扫码弹层 -->
+<div id="qrModal" class="modal hidden">
+  <div class="modal-box">
+    <h3 data-i18n="wc.title">扫码连接币安钱包</h3>
+    <div class="qr" id="qrBox"></div>
+    <p class="hint" data-i18n="wc.tip">用币安 App 扫描二维码授权；授权成功后回到本页点「用钱包直接铸造」</p>
+    <div class="btn-row">
+      <button id="qrClose" class="btn btn-ghost" data-i18n="wc.cancel">取消</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<!-- WalletConnect v2 + 二维码（本地打包，无第三方依赖） -->
+<script src="vendor/wc.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

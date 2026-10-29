@@ -93,6 +93,22 @@ main { max-width: 1120px; margin: 0 auto; padding: 10px 24px 60px; }
 .prog-stats span { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
 .prog-stats b { font-size: 13px; color: var(--text); word-break: break-all; }
 
+/* WalletConnect 扫码弹层 */
+.modal {
+  position: fixed; inset: 0; z-index: 999;
+  background: rgba(5, 8, 14, .82); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal.hidden { display: none; }
+.modal-box {
+  width: 100%; max-width: 340px; padding: 22px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px; text-align: center;
+}
+.modal-box h3 { margin: 0 0 14px !important; }
+.qr { width: 240px; height: 240px; margin: 0 auto 12px; padding: 10px; background: #fff; border-radius: 12px; }
+.qr svg { display: block; }
+.modal-box .hint { font-size: 11.5px; }
+
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 
