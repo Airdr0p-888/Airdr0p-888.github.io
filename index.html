@@ -34,6 +34,16 @@
   <!-- 连接状态 / 错误（常驻显示，方便排查） -->
   <div id="connMsg" class="hint"></div>
 
+  <!-- 环境诊断：连不上钱包时点开，把内容发来定位 -->
+  <details class="adv" id="diagBox">
+    <summary data-i18n="wc.diagTitle">环境诊断（连不上钱包时点开这里）</summary>
+    <pre id="diag" class="diag"></pre>
+    <button id="diagCopy" class="btn btn-ghost btn-xs" data-i18n="wc.diagCopy">复制诊断信息</button>
+    <button id="diagReload" class="btn btn-ghost btn-xs" data-i18n="wc.diagReload">重新检测</button>
+    <button id="netTest" class="btn btn-ghost btn-xs" data-i18n="wc.netTest">测试连接服务</button>
+    <pre id="netOut" class="diag hidden"></pre>
+  </details>
+
   <!-- 币安 AI 钱包（Agentic Wallet）铸造入口 -->
   <div class="card card-ai">
     <h3 data-i18n="ai.title">用币安 AI 钱包（Agentic Wallet）铸造</h3>

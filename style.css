@@ -135,6 +135,20 @@ main { max-width: 1120px; margin: 0 auto; padding: 10px 24px 60px; }
 }
 .aw-badge.ok { color: #35c07f; border-color: #35c07f; }
 
+/* 环境诊断 / 状态栏 */
+#connMsg {
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: rgba(255, 255, 255, .02); line-height: 1.7;
+}
+#connMsg:empty { display: none; }
+#connMsg a { color: var(--gold); text-decoration: underline; }
+.diag {
+  margin: 8px 0; padding: 10px 12px; font-size: 11.5px; line-height: 1.6;
+  white-space: pre-wrap; word-break: break-all;
+  background: rgba(0, 0, 0, .35); border: 1px solid var(--line); border-radius: 8px;
+  color: var(--muted); font-family: ui-monospace, monospace; max-height: 260px; overflow: auto;
+}
+
 /* WalletConnect 扫码弹层 */
 .modal {
   position: fixed; inset: 0; z-index: 999;

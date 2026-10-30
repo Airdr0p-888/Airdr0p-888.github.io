@@ -42,6 +42,16 @@
       "wc.qrReady": "二维码已生成，用币安 App 扫描授权",
       "wc.slowHint": "连接服务迟迟没有响应：多半是 Reown 后台没把本站域名加进 Allowed origins，也可能是网络被限制。可改用「复制本站网址」在币安 App 内打开。",
       "wc.noWay": "此浏览器既没有币安钱包，也无法建立扫码连接。请在币安 App 内打开本站（Web3 钱包 → 发现 → 粘贴网址），或使用「生成 AI 指令」让 AI 代理代铸。",
+      "wc.diagTitle": "环境诊断（连不上钱包时点开这里）",
+      "wc.diagCopy": "复制诊断信息",
+      "wc.diagReload": "重新检测",
+      "wc.diagCopied": "诊断信息已复制，贴给开发者定位",
+      "wc.relayBlockedShort": "当前网络无法访问 WalletConnect 中继，扫码连接不可用",
+      "wc.relayBlocked": "当前网络无法访问 WalletConnect 中继（连接被重置），扫码连接不可用。请二选一：① 在 Chrome 安装<a href='https://chromewebstore.google.com/detail/binance-wallet/cadiboklkpojfamcoggejbbdjcoiljjk' target='_blank' rel='noopener'>币安钱包插件</a>，装好后点「连接币安钱包」直接连（不依赖中继）；② 在币安 App 的 Web3 钱包浏览器里打开本站。也可以用「生成 AI 指令」让 AI 代理代铸。",
+      "wc.netTest": "测试连接服务",
+      "wc.netTesting": "正在用 WalletConnect 真实握手测试…（最多 20 秒）",
+      "wc.netRelayOk": "✓ 中继连接成功（网络没问题）。正在请求配对，验证 projectId…",
+      "wc.netDone": "连通性测试完成，结果见下方",
       "wc.connectingFirst": "正在连接币安钱包…",
       "wc.needId": "未配置 WalletConnect projectId，扫码连接不可用",
       "wc.pidSaved": "projectId 已保存",
@@ -222,6 +232,16 @@
       "wc.qrReady": "QR code ready — scan it with the Binance App to approve",
       "wc.slowHint": "The connection service is not responding: most likely this domain is not in Allowed origins in the Reown dashboard, or the network is blocked. You can also copy the page URL and open it inside the Binance App.",
       "wc.noWay": "No Binance Wallet found and QR connection unavailable. Open this site inside the Binance App (Web3 Wallet → Discover → paste URL), or use \"Generate AI command\" and let your AI agent mint for you.",
+      "wc.diagTitle": "Diagnostics (open this if the wallet won't connect)",
+      "wc.diagCopy": "Copy diagnostics",
+      "wc.diagReload": "Re-check",
+      "wc.diagCopied": "Diagnostics copied — paste them to the developer",
+      "wc.relayBlockedShort": "Cannot reach the WalletConnect relay from this network — QR connect unavailable",
+      "wc.relayBlocked": "Cannot reach the WalletConnect relay from this network (connection reset), so QR connect is unavailable. Pick one: ① install the <a href='https://chromewebstore.google.com/detail/binance-wallet/cadiboklkpojfamcoggejbbdjcoiljjk' target='_blank' rel='noopener'>Binance Wallet Chrome extension</a>, then press \"Connect Binance Wallet\" to connect directly (no relay needed); ② open this site inside the Binance App Web3 browser. You can also use \"Generate AI command\" and let your AI agent mint.",
+      "wc.netTest": "Test connection service",
+      "wc.netTesting": "Running a real WalletConnect handshake… (up to 20s)",
+      "wc.netRelayOk": "✓ Relay connected (network is fine). Requesting pairing to verify the projectId…",
+      "wc.netDone": "Connectivity test done — see the result below",
       "wc.connectingFirst": "Connecting Binance Wallet…",
       "wc.needId": "WalletConnect projectId not configured — QR connect unavailable",
       "wc.pidSaved": "projectId saved",
@@ -772,6 +792,11 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     if (e && e.detail && e.detail.info && e.detail.provider) eip6963.push(e.detail);
   });
 
+  // 是否在币安 App 内核里打开（App 的浏览器 UA 通常带 Binance）
+  function inBinanceApp() {
+    return /Binance|binancew3w|bnbweb3/i.test(navigator.userAgent) || !!(window.binancew3w);
+  }
+
   function injectedWallet() {
     const binance = eip6963.filter((d) => String((d.info && d.info.rdns) || "").toLowerCase().includes("binance"));
     if (binance.length) return binance[0].provider;
@@ -779,7 +804,33 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     if (e && (e.isBinance || e.isBinanceWeb3Wallet || e.isBinanceW3W)) return e;
     if (window.BinanceChain) return window.BinanceChain;
     if (window.binancew3w && window.binancew3w.ethereum) return window.binancew3w.ethereum;
+    // 兜底：确实在币安 App 里，但钱包没打标记 —— 那 window.ethereum 就是币安钱包，直接用它，
+    // 免得识别不到就跑去走扫码（relay 不通时永远连不上）
+    if (inBinanceApp() && e) return e;
     return null;
+  }
+
+  // 环境诊断：把浏览器里真实存在的钱包对象列出来，便于定位"连不上"
+  function diagInfo() {
+    const e = window.ethereum;
+    const L = [];
+    L.push("URL: " + location.href);
+    L.push("UA: " + navigator.userAgent);
+    L.push("在币安 App 内: " + (inBinanceApp() ? "是" : "否"));
+    L.push("window.ethereum: " + (e ? "有" : "无"));
+    if (e) {
+      L.push("  isMetaMask=" + !!e.isMetaMask + " isBinance=" + !!e.isBinance + " isBinanceW3W=" + !!e.isBinanceW3W + " isCoinbaseWallet=" + !!e.isCoinbaseWallet);
+    }
+    L.push("window.BinanceChain: " + (window.BinanceChain ? "有" : "无"));
+    L.push("window.binancew3w: " + (window.binancew3w && window.binancew3w.ethereum ? "有" : "无"));
+    L.push(
+      "EIP-6963: " +
+        (eip6963.length ? eip6963.map((d) => (d.info && d.info.rdns) + " / " + (d.info && d.info.name)).join(" ; ") : "无")
+    );
+    L.push("WCMint(vendor/wc.js): " + (window.WCMint ? "已加载" : "未加载"));
+    L.push("projectId: " + (wcProjectId() || "空"));
+    L.push("injectedWallet(): " + (injectedWallet() ? "有 → 会直接弹钱包" : "无 → 会走扫码/WC"));
+    return L.join("\n");
   }
 
   async function connect() {
@@ -1074,6 +1125,66 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   try {
     window.dispatchEvent(new Event("eip6963:requestProvider"));
   } catch {}
+  // 钱包广播是异步的，稍后再刷新一次诊断
+  setTimeout(renderDiag, 600);
+
+  // 诊断面板
+  function renderDiag() {
+    const el = $("diag");
+    if (el) el.textContent = diagInfo();
+  }
+  if ($("diagCopy"))
+    $("diagCopy").addEventListener("click", async () => {
+      renderDiag();
+      try {
+        await navigator.clipboard.writeText(diagInfo());
+      } catch {}
+      toast(t("wc.diagCopied"), "ok");
+    });
+  if ($("diagReload")) $("diagReload").addEventListener("click", renderDiag);
+  renderDiag();
+
+  // （旧版裸 WS 探测已移除：握手方式与 SDK 不同，结果会误报）
+
+  // 「测试连接服务」：用真实的 WalletConnect SDK 走一遍完整握手 —— 结果只有三种，都能定位问题
+  if ($("netTest"))
+    $("netTest").addEventListener("click", async () => {
+      const out = $("netOut");
+      if (!out) return;
+      out.classList.remove("hidden");
+      const pid = wcProjectId() || "";
+      if (!window.WCMint || !window.WCMint.EthereumProvider) {
+        out.textContent = "✗ vendor/wc.js 未加载（刷新或检查该文件是否已上传）";
+        return;
+      }
+      out.textContent = t("wc.netTesting");
+      let p;
+      try {
+        p = await window.WCMint.EthereumProvider.init({
+          projectId: pid,
+          chains: [CHAIN_ID],
+          optionalChains: [CHAIN_ID],
+          showQrModal: false,
+          metadata: { name: "diag", description: "diag", url: location.origin, icons: [] },
+        });
+      } catch (e) {
+        out.textContent = "✗ 连不上中继（网络问题）：" + ((e && e.message) || e);
+        return;
+      }
+      // init 成功 = 中继已连上，网络没问题；接下来看 projectId 是否被接受
+      out.textContent = t("wc.netRelayOk");
+      let got = false;
+      p.on("display_uri", (uri) => {
+        got = true;
+        out.textContent = "✓ 全部正常：projectId 有效，已拿到配对 URI\n" + String(uri).slice(0, 64) + "…\n（说明扫码连接可用，问题在别处）";
+      });
+      p.connect().catch((e) => {
+        if (!got) out.textContent = "✗ 配对被拒：" + ((e && e.message) || e);
+      });
+      setTimeout(() => {
+        if (!got) out.textContent = "✗ 中继已连上，但配对一直没响应 → projectId 无效 / 项目被暂停 / 该项目开了域名白名单但没登记 " + location.origin + "。请去 dashboard.reown.com 核对 Project ID，并在 Allowed origins 里加上本站域名。";
+      }, 15000);
+    });
 
   // WalletConnect projectId：填一次存本机
   if ($("wcPid")) {
