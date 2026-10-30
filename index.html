@@ -31,6 +31,17 @@
 </section>
 
 <main>
+  <!-- 币安 AI 钱包（Agentic Wallet）铸造入口 -->
+  <div class="card card-ai">
+    <h3 data-i18n="ai.title">用币安 AI 钱包（Agentic Wallet）铸造</h3>
+    <ul class="notes">
+      <li data-i18n="ai.s1">本页填地址 → 选份数 → 点「生成 AI 指令」，指令会<b>自动复制</b>。</li>
+      <li data-i18n="ai.s2">把指令发给你自己的 AI 代理（需已安装币安 Agentic Wallet 的 <code>baw</code> CLI 并开启 devMode）。</li>
+      <li data-i18n="ai.s3">代理会用你的 AI 钱包完成 approve + mint，每笔都会先 preview 并等你确认。</li>
+    </ul>
+    <p class="hint" data-i18n="ai.note">Agentic Wallet 是给 AI 代理用的钱包，没有网页连接接口，所以本页无法直接连接它 —— 与 jager.live 的做法一致：网页生成指令，AI 代理执行铸造。</p>
+  </div>
+
   <!-- Mint 进度 -->
   <div class="card prog">
     <div class="prog-head">
@@ -86,14 +97,15 @@
       </details>
 
       <div class="btn-row">
-        <button id="checkBtn" class="btn btn-primary" data-i18n="btn.check">检查资格</button>
+        <button id="walletMintBtn" class="btn btn-primary btn-lg" data-i18n="btn.walletMint">一键铸造（Mint）</button>
+      </div>
+      <div class="btn-row">
+        <button id="checkBtn" class="btn btn-ghost" data-i18n="btn.check">检查资格</button>
         <button id="genBtn" class="btn btn-ghost" data-i18n="btn.gen">生成 AI 指令</button>
       </div>
-
-      <div class="btn-row">
-        <button id="walletMintBtn" class="btn btn-primary" data-i18n="btn.walletMint">用钱包直接铸造</button>
-      </div>
       <div id="wtx" class="hint"></div>
+      <p id="hintNoBinance" class="hint hidden" data-i18n="wc.notBinance">检测到非币安钱包（如小狐狸）。本页只连币安钱包：请在币安 App 内打开本站，或安装币安钱包插件，也可用扫码连接。</p>
+      <p id="hintScan" class="hint hidden" data-i18n="wc.scanMode">未检测到币安钱包：点「一键铸造」会弹出二维码，用币安 App 扫码授权后自动完成铸造。</p>
       <p class="hint" data-i18n="wc.hint">连接币安钱包后可在网页直接铸造（approve + mint 两笔交易）</p>
 
       <div id="elig" class="elig"></div>
@@ -210,8 +222,9 @@
   <div class="modal-box">
     <h3 data-i18n="wc.title">扫码连接币安钱包</h3>
     <div class="qr" id="qrBox"></div>
-    <p class="hint" data-i18n="wc.tip">用币安 App 扫描二维码授权；授权成功后回到本页点「用钱包直接铸造」</p>
+    <p class="hint" data-i18n="wc.tip">用币安 App 扫二维码，或点下面按钮跳转授权；授权成功后回到本页点「用钱包直接铸造」</p>
     <div class="btn-row">
+      <a id="wcOpen" class="btn btn-primary" href="#" target="_blank" rel="noopener" data-i18n="wc.openApp">打开币安 App 授权</a>
       <button id="qrClose" class="btn btn-ghost" data-i18n="wc.cancel">取消</button>
     </div>
   </div>

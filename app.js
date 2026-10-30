@@ -24,8 +24,9 @@
       "btn.walletMint": "用钱包直接铸造",
       "wc.hint": "连接币安钱包后可在网页直接铸造（approve + mint 两笔交易）",
       "wc.title": "扫码连接币安钱包",
-      "wc.tip": "用币安 App 扫描二维码授权；授权成功后回到本页点「用钱包直接铸造」",
+      "wc.tip": "用币安 App 扫二维码，或点下面按钮跳转授权；授权成功后回到本页点「用钱包直接铸造」",
       "wc.cancel": "取消",
+      "wc.openApp": "打开币安 App 授权",
       "wc.needId": "未配置 WalletConnect projectId，扫码连接不可用",
       "wc.pidSaved": "projectId 已保存",
       "wc.connecting": "正在建立连接…",
@@ -146,6 +147,12 @@
       "t.mintOk": "铸造成功",
       "t.mintFail": "铸造失败",
       "t.genFirst": "请先生成指令",
+      "t.genCopied": "指令已复制，发给你的 AI 代理即可",
+      "ai.title": "用币安 AI 钱包（Agentic Wallet）铸造",
+      "ai.s1": "本页填地址 → 选份数 → 点「生成 AI 指令」，指令会<b>自动复制</b>。",
+      "ai.s2": "把指令发给你自己的 AI 代理（需已安装币安 Agentic Wallet 的 <code>baw</code> CLI 并开启 devMode）。",
+      "ai.s3": "代理会用你的 AI 钱包完成 approve + mint，每笔都会先 preview 并等你确认。",
+      "ai.note": "Agentic Wallet 是给 AI 代理用的钱包，没有网页连接接口，所以本页无法直接连接它 —— 与 jager.live 的做法一致：网页生成指令，AI 代理执行铸造。",
 
       "cmd.body": `我有币安 Agentic Wallet，请在 BSC（binanceChainId {chain}）上帮我铸造 {name}。
 我的钱包地址：{addr}{idLine}
@@ -181,8 +188,9 @@
       "btn.walletMint": "Mint with wallet",
       "wc.hint": "Connect your Binance wallet to mint directly on this page (approve + mint)",
       "wc.title": "Scan to connect Binance Wallet",
-      "wc.tip": "Scan with the Binance App to authorize, then press \"Mint with wallet\"",
+      "wc.tip": "Scan with the Binance App, or use the button below to jump to it; once approved, come back and press \"Mint with wallet\"",
       "wc.cancel": "Cancel",
+      "wc.openApp": "Open Binance App to approve",
       "wc.needId": "WalletConnect projectId not configured — QR connect unavailable",
       "wc.pidSaved": "projectId saved",
       "wc.connecting": "Connecting…",
@@ -303,6 +311,12 @@ Important: never transfer USDT directly to the mint contract. Always approve the
       "t.mintOk": "Mint succeeded",
       "t.mintFail": "Mint failed",
       "t.genFirst": "Generate the command first",
+      "t.genCopied": "Command copied — paste it to your AI agent",
+      "ai.title": "Mint with Binance Agentic Wallet (AI wallet)",
+      "ai.s1": "Enter your address → pick the share count → press \"Generate AI command\" — it is <b>copied automatically</b>.",
+      "ai.s2": "Send the command to your own AI agent (Binance Agentic Wallet <code>baw</code> CLI installed, devMode enabled).",
+      "ai.s3": "The agent approves and mints with your AI wallet, previewing every transaction and waiting for your confirmation.",
+      "ai.note": "Agentic Wallet is a wallet for AI agents — it has no web connection interface, so this page cannot connect to it directly. Same approach as jager.live: the page builds the command, the AI agent executes the mint.",
 
       "cmd.body": `I have a Binance Agentic Wallet. Please mint {name} for me on BSC (binanceChainId {chain}).
 My wallet address: {addr}{idLine}
@@ -686,7 +700,14 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     const cmd = buildCommand();
     if (!cmd) return;
     $("cmd").value = cmd;
-    toast(t("t.genOk"), "ok");
+    // 生成即复制：用户只要粘给自己的 AI 代理（baw CLI）就行
+    try {
+      await navigator.clipboard.writeText(cmd);
+      toast(t("t.genCopied"), "ok");
+    } catch {
+      $("cmd").select();
+      toast(t("t.genOk"), "ok");
+    }
   }
 
   /* ---------- 连接币安钱包 ---------- */
@@ -694,10 +715,11 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   // 币安登录页；return_to 用 base64 编码当前页面，登录后自动跳回
   const BINANCE_LOGIN = "https://accounts.binance.com/en/login";
 
-  // WalletConnect projectId：优先用页面上填的（存本机 localStorage），没填就是空 → 扫码不可用
+  // WalletConnect projectId：页面里填的优先（存本机），没填就用下面这个默认值
   const WC_PID_KEY = "agt_wc_pid";
+  const DEFAULT_WC_PID = "d1d20d01deca8b04d0c243954db38bd8";
   function wcProjectId() {
-    return (localStorage.getItem(WC_PID_KEY) || "").trim();
+    return (localStorage.getItem(WC_PID_KEY) || DEFAULT_WC_PID).trim();
   }
 
   function binanceLoginUrl() {
@@ -708,10 +730,12 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     return back ? `${BINANCE_LOGIN}?return_to=${encodeURIComponent(back)}` : BINANCE_LOGIN;
   }
 
-  // 币安钱包注入对象：App 内 DApp 浏览器是 window.binancew3w.ethereum，插件是 window.ethereum
+  // 只认币安钱包：App 内 DApp 浏览器是 window.binancew3w.ethereum，插件带 isBinance 标记。
+  // 其他钱包（小狐狸等）一律不用，避免点了「连接币安钱包」却弹出 MetaMask。
   function injectedWallet() {
     if (window.binancew3w && window.binancew3w.ethereum) return window.binancew3w.ethereum;
-    if (window.ethereum) return window.ethereum;
+    const e = window.ethereum;
+    if (e && (e.isBinance || e.isBinanceWeb3Wallet || e.isBinanceW3W)) return e;
     return null;
   }
 
@@ -775,11 +799,26 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     if (cb) cb.textContent = shortAddr(addr);
   }
 
+  let lastUri = ""; // 最近一次 WC 连接串，用于「打开币安 App」按钮
+
+  function wcOpenUrl(uri) {
+    return "https://walletconnect.com/wc?uri=" + encodeURIComponent(uri);
+  }
+
   function showQr(uri) {
+    lastUri = uri;
     const box = $("qrBox");
     if (box && window.WCMint) box.innerHTML = window.WCMint.qrSvg(uri);
+    const open = $("wcOpen");
+    if (open) open.href = wcOpenUrl(uri);
     const m = $("qrModal");
     if (m) m.classList.remove("hidden");
+    // 手机浏览器：自动开新标签唤起币安 App 授权（不卸载本页，连接状态才不会丢）
+    if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) {
+      try {
+        window.open(wcOpenUrl(uri), "_blank");
+      } catch {}
+    }
   }
 
   function closeQr() {
@@ -790,17 +829,26 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   /* ---------- 网页直接铸造（钱包签名） ---------- */
 
   async function mintWithWallet() {
-    if (!walletProvider) return toast(t("wc.needConnect"), "err");
+    const wtx0 = $("wtx");
+    // 失败原因不只弹 toast，也写在按钮下方，避免"点了没反应"
+    const fail = (msg) => {
+      toast(msg, "err");
+      if (wtx0) wtx0.innerHTML = `<span class="err">${msg}</span>`;
+    };
+
+    if (!walletProvider) return fail(t("wc.needConnect"));
     if (!info) {
       try {
         await loadInfo();
-      } catch {}
+      } catch (e) {
+        return fail(t("wc.needInfo"));
+      }
     }
-    if (!info) return toast(t("wc.needInfo"), "err");
+    if (!info) return fail(t("wc.needInfo"));
 
     const bp = new ethers.BrowserProvider(walletProvider);
     const net = await bp.getNetwork();
-    if (Number(net.chainId) !== CHAIN_ID) return toast(t("t.wrongChain"), "err");
+    if (Number(net.chainId) !== CHAIN_ID) return fail(t("t.wrongChain"));
 
     const signer = await bp.getSigner();
     const from = await signer.getAddress();
@@ -848,7 +896,7 @@ Important: never transfer USDT directly to the mint contract. Always approve the
           .join(" · ") + ` · ${t("tx.gas")}: ${gasUsed}`;
       loadInfo().catch(() => {});
     } catch (e) {
-      toast(e.shortMessage || e.message || t("t.mintFail"), "err");
+      fail(e.shortMessage || e.reason || e.message || t("t.mintFail"));
     }
   }
 
@@ -886,6 +934,13 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     });
   }
   if ($("qrClose")) $("qrClose").addEventListener("click", closeQr);
+  if ($("wcOpen"))
+    $("wcOpen").addEventListener("click", (e) => {
+      if (!lastUri) {
+        e.preventDefault();
+        toast(t("wc.needConnect"), "err");
+      }
+    });
   if ($("qrModal"))
     $("qrModal").addEventListener("click", (e) => {
       if (e.target === $("qrModal")) closeQr();
