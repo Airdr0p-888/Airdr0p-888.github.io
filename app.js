@@ -31,6 +31,9 @@
       "wc.scanMode": "未检测到币安钱包：点「一键铸造」会弹出二维码，用币安 App 扫码授权后自动完成铸造。",
       "wc.copyLink": "复制本站网址",
       "wc.copyLinkOk": "网址已复制，粘到币安 App 内打开即可直接连钱包铸造",
+      "wc.qrReady": "二维码已生成，用币安 App 扫描授权",
+      "wc.slowHint": "连接服务迟迟没有响应：多半是 Reown 后台没把本站域名加进 Allowed origins，也可能是网络被限制。可改用「复制本站网址」在币安 App 内打开。",
+      "wc.noWay": "此浏览器既没有币安钱包，也无法建立扫码连接。请在币安 App 内打开本站（Web3 钱包 → 发现 → 粘贴网址），或使用「生成 AI 指令」让 AI 代理代铸。",
       "wc.connectingFirst": "正在连接币安钱包…",
       "wc.needId": "未配置 WalletConnect projectId，扫码连接不可用",
       "wc.pidSaved": "projectId 已保存",
@@ -200,6 +203,9 @@
       "wc.scanMode": "No Binance Wallet detected: pressing \"Mint now\" shows a QR code — scan it with the Binance App and the mint completes automatically.",
       "wc.copyLink": "Copy page URL",
       "wc.copyLinkOk": "URL copied — open it inside the Binance App to connect your wallet and mint",
+      "wc.qrReady": "QR code ready — scan it with the Binance App to approve",
+      "wc.slowHint": "The connection service is not responding: most likely this domain is not in Allowed origins in the Reown dashboard, or the network is blocked. You can also copy the page URL and open it inside the Binance App.",
+      "wc.noWay": "No Binance Wallet found and QR connection unavailable. Open this site inside the Binance App (Web3 Wallet → Discover → paste URL), or use \"Generate AI command\" and let your AI agent mint for you.",
       "wc.connectingFirst": "Connecting Binance Wallet…",
       "wc.needId": "WalletConnect projectId not configured — QR connect unavailable",
       "wc.pidSaved": "projectId saved",
@@ -763,13 +769,16 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   async function connect() {
     const w = injectedWallet();
     if (w) {
+      connMsg(t("wc.connecting"));
       try {
         const accs = await w.request({ method: "eth_requestAccounts" });
         walletProvider = w;
         setAccount(accs[0]);
+        connMsg(t("wc.connected") + " " + shortAddr(accs[0]));
         toast(t("t.walletOk"), "ok");
         check(); // 连上后直接检查资格
       } catch (e) {
+        connMsg(t("t.connectFail") + "：" + ((e && (e.shortMessage || e.message)) || ""), true);
         toast(e.message || t("t.connectFail"), "err");
       }
       return;
@@ -780,11 +789,16 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     if (W && W.EthereumProvider) {
       const pid = wcProjectId();
       if (!pid) {
+        connMsg(t("wc.needId"), true);
         toast(t("wc.needId"), "err");
         return;
       }
       try {
+        connMsg(t("wc.connecting"));
         toast(t("wc.connecting"));
+        // 8 秒还没拿到二维码，多半是 Reown 后台没登记域名（Allowed origins）
+        const slow = setTimeout(() => connMsg(t("wc.slowHint"), true), 8000);
+        const clearSlow = () => clearTimeout(slow);
         wcProvider = await W.EthereumProvider.init({
           projectId: pid,
           chains: [CHAIN_ID],
@@ -793,23 +807,38 @@ Important: never transfer USDT directly to the mint contract. Always approve the
           methods: ["eth_sendTransaction", "eth_requestAccounts", "eth_accounts", "eth_chainId", "wallet_switchEthereumChain"],
           events: ["chainChanged", "accountsChanged"],
         });
-        wcProvider.on("display_uri", (uri) => showQr(uri));
+        wcProvider.on("display_uri", (uri) => {
+          clearSlow();
+          showQr(uri);
+        });
         const accs = await wcProvider.request({ method: "eth_requestAccounts" });
+        clearSlow();
         closeQr();
         walletProvider = wcProvider;
         setAccount(accs[0]);
+        connMsg(t("wc.connected") + " " + shortAddr(accs[0]));
         toast(t("wc.connected"), "ok");
         check();
       } catch (e) {
+        clearSlow();
         closeQr();
-        toast(e.message || t("t.connectFail"), "err");
+        const msg = (e && (e.shortMessage || e.message)) || t("t.connectFail");
+        connMsg(t("t.connectFail") + "：" + msg, true);
+        toast(msg, "err");
       }
       return;
     }
 
-    // 都没有 → 跳币安登录，登录后回到本页
-    toast(t("t.redirecting"));
-    setTimeout(() => (location.href = binanceLoginUrl()), 400);
+    // 都没有 → 提示改用币安 App 内打开（交易所登录页连不到钱包，不再误导用户跳转）
+    connMsg(t("wc.noWay"), true);
+    toast(t("wc.noWay"), "err");
+  }
+
+  // 连接状态常驻显示（失败原因不再是一闪而过的 toast）
+  function connMsg(text, isErr) {
+    const el = $("connMsg");
+    if (!el) return;
+    el.innerHTML = text ? `<span class="${isErr ? "err" : ""}">${text}</span>` : "";
   }
 
   function setAccount(addr) {
@@ -829,11 +858,18 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   function showQr(uri) {
     lastUri = uri;
     const box = $("qrBox");
-    if (box && window.WCMint) box.innerHTML = window.WCMint.qrSvg(uri);
+    if (box && window.WCMint) {
+      try {
+        box.innerHTML = window.WCMint.qrSvg(uri);
+      } catch {
+        box.textContent = uri; // 二维码渲染失败也把连接串露出来
+      }
+    }
     const open = $("wcOpen");
     if (open) open.href = wcOpenUrl(uri);
     const m = $("qrModal");
     if (m) m.classList.remove("hidden");
+    connMsg(t("wc.qrReady"));
     // 手机浏览器：自动开新标签唤起币安 App 授权（不卸载本页，连接状态才不会丢）
     if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) {
       try {
