@@ -34,6 +34,11 @@
       "wc.regular": "使用普通钱包",
       "wc.noInjected": "没有检测到浏览器钱包插件",
       "wc.openApp": "打开币安登录",
+      "wc.openSite": "在币安 App 打开本站",
+      "wc.qrModeWc": "用币安 App 扫码，确认配对码一致后授权连接。",
+      "wc.badUri": "连接串异常（不是有效的 wc: 连接串），请把下方文字发开发者",
+      "wc.qrModeUrl": "用币安 App 扫码 → 在 App 内打开本站 → App 内点「一键铸造」即可（App 内自带币安钱包，无需扫码连接）。",
+      "wc.urlQrHint": "WalletConnect 无响应，已改用二维码：用币安 App 扫码打开本站在 App 内铸造。",
       "wc.cancel": "取消连接",
       "wc.notBinance": "检测到非币安钱包（如小狐狸）。本页只连币安钱包：请在币安 App 内打开本站，或安装币安钱包插件，也可用扫码连接。",
       "wc.scanMode": "未检测到币安钱包：点「一键铸造」会弹出二维码，用币安 App 扫码授权后自动完成铸造。",
@@ -224,6 +229,11 @@
       "wc.regular": "Use a regular wallet",
       "wc.noInjected": "No browser wallet detected",
       "wc.openApp": "Open Binance sign-in",
+      "wc.openSite": "Open this site in the Binance App",
+      "wc.qrModeWc": "Scan with the Binance App, then check that the pairing code matches before confirming.",
+      "wc.badUri": "Invalid URI (not a valid wc: pairing string) — send the text below to the developer",
+      "wc.qrModeUrl": "Scan with the Binance App → this site opens inside the App → press \"Mint\" there (the App has the Binance wallet built in, no pairing needed).",
+      "wc.urlQrHint": "WalletConnect is not responding — switched to a URL QR code: scan it with the Binance App to open this site and mint inside the App.",
       "wc.cancel": "Cancel connection",
       "wc.notBinance": "A non-Binance wallet (e.g. MetaMask) was detected. This page only connects to Binance Wallet: open this site inside the Binance App, install the Binance Wallet extension, or use the QR option.",
       "wc.scanMode": "No Binance Wallet detected: pressing \"Mint now\" shows a QR code — scan it with the Binance App and the mint completes automatically.",
@@ -856,15 +866,18 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     if (W && W.EthereumProvider) {
       const pid = wcProjectId();
       if (!pid) {
-        connMsg(t("wc.needId"), true);
+        showUrlQr(); // 没配 projectId 也要有码可扫：改成「网址码」在币安 App 内打开
         toast(t("wc.needId"), "err");
         return;
       }
       try {
         connMsg(t("wc.connecting"));
         toast(t("wc.connecting"));
-        // 8 秒还没拿到二维码，多半是 Reown 后台没登记域名（Allowed origins）
-        const slow = setTimeout(() => connMsg(t("wc.slowHint"), true), 8000);
+        let gotUri = false;
+        // 6 秒还没拿到配对码 → 不再干等，直接给「网址码」（币安 App 扫码即在 App 内打开本站）
+        const slow = setTimeout(() => {
+          if (!gotUri) showUrlQr();
+        }, 6000);
         const clearSlow = () => clearTimeout(slow);
         wcProvider = await W.EthereumProvider.init({
           projectId: pid,
@@ -874,9 +887,13 @@ Important: never transfer USDT directly to the mint contract. Always approve the
           methods: ["eth_sendTransaction", "eth_requestAccounts", "eth_accounts", "eth_chainId", "wallet_switchEthereumChain"],
           events: ["chainChanged", "accountsChanged"],
         });
-        wcProvider.on("display_uri", (uri) => {
+        wcProvider.on("display_uri", (arg) => {
+          // 不同版本的 SDK 这里可能给字符串，也可能给对象，统一取出字符串
+          let uri = typeof arg === "string" ? arg : arg && (arg.uri || arg.data || arg.params);
+          if (uri && typeof uri !== "string") uri = String(uri.uri || uri.data || uri);
+          gotUri = true;
           clearSlow();
-          showQr(uri);
+          showQr(uri || "");
         });
         const accs = await wcProvider.request({ method: "eth_requestAccounts" });
         clearSlow();
@@ -929,20 +946,32 @@ Important: never transfer USDT directly to the mint contract. Always approve the
 
   function showQr(uri) {
     lastUri = uri;
+    const ok = typeof uri === "string" && uri.indexOf("wc:") === 0;
     const box = $("qrBox");
-    if (box && window.WCMint) {
-      try {
-        box.innerHTML = window.WCMint.qrSvg(uri);
-      } catch {
-        box.textContent = uri; // 二维码渲染失败也把连接串露出来
+    if (box) {
+      if (ok && window.WCMint && window.WCMint.qrSvg) {
+        try {
+          box.innerHTML = window.WCMint.qrSvg(uri);
+        } catch {
+          box.textContent = uri;
+        }
+      } else {
+        // 连接串不对就不画码，直接把原文露出来，方便定位
+        box.innerHTML = `<span class="err">连接串异常（不是有效的 wc: 连接串）：<br>${String(uri).slice(0, 300)}</span>`;
+        connMsg(t("wc.badUri") + "：" + String(uri).slice(0, 80), true);
       }
     }
     const open = $("wcOpen");
-    if (open) open.href = wcOpenUrl(uri);
+    if (open) {
+      open.href = ok ? wcOpenUrl(uri) : "#";
+      open.textContent = t("wc.openApp");
+    }
+    const mode = $("qrMode");
+    if (mode) mode.textContent = ok ? t("wc.qrModeWc") : t("wc.badUri");
     const m = $("qrModal");
     if (m) m.classList.remove("hidden");
     // 配对码（jager 同款）：取 WC 会话 topic 前 6 位，币安 App 端会显示同样的码供比对
-    const tm = String(uri).match(/^wc:([0-9a-fA-F]+)@/);
+    const tm = ok ? uri.match(/^wc:([0-9a-fA-F]+)@/) : null;
     const pair = $("awPair");
     if (pair) pair.textContent = tm ? tm[1].slice(0, 6).toUpperCase() : "——";
     const badge = $("awBadge");
@@ -953,11 +982,44 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     connMsg(t("wc.qrReady"));
     startWaitTimer();
     // 手机浏览器：自动开新标签唤起币安 App 授权（不卸载本页，连接状态才不会丢）
-    if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) {
+    if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) && String(uri).startsWith("wc:")) {
       try {
         window.open(wcOpenUrl(uri), "_blank");
       } catch {}
     }
+  }
+
+  /* 兜底二维码：把本站网址做成码。
+     币安 App 扫完就在 App 内打开本站 —— App 内置浏览器自带钱包注入，
+     因此不需要 WalletConnect、不需要 projectId，任何网络环境都能用。 */
+  function showUrlQr() {
+    const url = location.href.split("#")[0];
+    const box = $("qrBox");
+    if (box) {
+      try {
+        box.innerHTML = window.WCMint && window.WCMint.qrSvg ? window.WCMint.qrSvg(url) : url;
+      } catch {
+        box.textContent = url;
+      }
+    }
+    const mode = $("qrMode");
+    if (mode) mode.textContent = t("wc.qrModeUrl");
+    const pair = $("awPair");
+    if (pair) pair.textContent = "——";
+    const open = $("wcOpen");
+    if (open) {
+      open.href = url;
+      open.textContent = t("wc.openSite");
+    }
+    const m = $("qrModal");
+    if (m) m.classList.remove("hidden");
+    const badge = $("awBadge");
+    if (badge) {
+      badge.textContent = t("wc.badgeConnecting");
+      badge.classList.remove("ok");
+    }
+    connMsg(t("wc.urlQrHint"));
+    startWaitTimer();
   }
 
   // 「正在等待币安 App · Ns」计时器（对齐 jager）
