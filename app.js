@@ -12,7 +12,8 @@
     "https://binance.llamarpc.com",
   ];
   const CHAIN_ID = 56;
-  const MINT_SIG = "0x836a1040"; // mint(uint256 shares, address referrer, uint256 maxCost)
+  const MINT_SIG = "0x836a1040"; // 新版：mint(uint256 shares, address referrer, uint256 maxCost)
+  const MINT_SIG_LEGACY = "0x1249c58b"; // 旧版：mint() 无参，一次只能买 1 份
 
   /* ---------------- 多语言 ---------------- */
 
@@ -26,6 +27,7 @@
       "wc.tip": "用币安 App 扫描二维码授权；授权成功后回到本页点「用钱包直接铸造」",
       "wc.cancel": "取消",
       "wc.needId": "未配置 WalletConnect projectId，扫码连接不可用",
+      "wc.pidSaved": "projectId 已保存",
       "wc.connecting": "正在建立连接…",
       "wc.connected": "钱包已连接",
       "wc.needConnect": "请先点右上角连接币安钱包",
@@ -33,6 +35,29 @@
       "tx.mint": "铸造交易",
       "tx.approve": "授权交易",
       "tx.gas": "gas",
+      "cmd.body.legacy": `我有币安 Agentic Wallet，请在 BSC（binanceChainId {chain}）上帮我铸造 {name}。
+我的钱包地址：{addr}{idLine}
+
+规则：
+- 先运行 \`baw wallet settings --json\`，确认 devMode.enabled 为 true。
+- 每笔交易都按「preview → 把解析结果和风险给我看 → 等我确认 → \`baw contract-call execute --requestId <这次 preview 返回的 requestId> --json\`」执行。
+- gas 预估加 20%。
+- 上一笔在链上确认成功后，再开始下一笔。
+- 任何一步 preview 报错或被拦截，就停下告诉我，不要改参数重试。
+
+第 1 笔：给 {name} 合约授权 {amountText} USDT（授权额度已够可跳过；按 1.02 倍给）
+  合约（USDT）: {uAddr}
+  approve(spender = {cAddr}, amount = {amountText} USDT)
+  调用数据: {approveData}
+  baw contract-call preview --binanceChainId {chain} --from {addr} --to {uAddr} --inputData {approveData} --json
+
+{tail}：调用 {name} 合约的 mint()，共 {count} 笔，每笔单独 preview + execute，每笔 {priceText} USDT 换 {perMint} {name}
+  合约: {cAddr}
+  调用数据: {mintData}
+  baw contract-call preview --binanceChainId {chain} --from {addr} --to {cAddr} --inputData {mintData} --json
+
+本次共 {count} 份 = {costText} USDT，预计得到 {totalText} {name}。
+注意：绝不能直接把 USDT 转到 mint 合约，必须 approve 后调用 mint；只有 {cAddr} 收款。`,
       "hero.title": "持有币安 <em>Agent ID</em> 才能铸造",
       "hero.sub": "每次 <b>{price}</b> USDT 换 <b>{perMint}</b> 枚 {symbol}，单地址上限 <b>{limit}</b> 次。<br />下面填地址 → 自动检查资格 → 复制指令发给你的 AI 代理即可。",
       "hero.loading": "正在读取链上参数…",
@@ -159,6 +184,7 @@
       "wc.tip": "Scan with the Binance App to authorize, then press \"Mint with wallet\"",
       "wc.cancel": "Cancel",
       "wc.needId": "WalletConnect projectId not configured — QR connect unavailable",
+      "wc.pidSaved": "projectId saved",
       "wc.connecting": "Connecting…",
       "wc.connected": "Wallet connected",
       "wc.needConnect": "Connect your Binance wallet first (top right)",
@@ -166,6 +192,29 @@
       "tx.mint": "Mint tx",
       "tx.approve": "Approve tx",
       "tx.gas": "gas",
+      "cmd.body.legacy": `I have a Binance Agentic Wallet. Please mint {name} for me on BSC (binanceChainId {chain}).
+My wallet address: {addr}{idLine}
+
+Rules:
+- First run \`baw wallet settings --json\` and confirm devMode.enabled is true.
+- For every transaction: preview → show me the parsed result and risks → wait for my confirmation → \`baw contract-call execute --requestId <requestId from that preview> --json\`.
+- Add 20% to the gas estimate.
+- Only start the next transaction after the previous one is confirmed on chain.
+- If any preview errors out or gets blocked, stop and tell me. Do not retry with changed parameters.
+
+Tx 1: approve {amountText} USDT to the {name} contract (skip if allowance is already enough; 1.02x buffer)
+  USDT contract: {uAddr}
+  approve(spender = {cAddr}, amount = {amountText} USDT)
+  Input data: {approveData}
+  baw contract-call preview --binanceChainId {chain} --from {addr} --to {uAddr} --inputData {approveData} --json
+
+{tail}: call mint() on the {name} contract, {count} tx total, each with its own preview + execute, {priceText} USDT for {perMint} {name} per mint
+  Contract: {cAddr}
+  Input data: {mintData}
+  baw contract-call preview --binanceChainId {chain} --from {addr} --to {cAddr} --inputData {mintData} --json
+
+Total: {count} shares = {costText} USDT, expected {totalText} {name}.
+Important: never transfer USDT directly to the mint contract. Always approve then call mint. {cAddr} is the only address that accepts payment.`,
       "hero.title": "Only Binance <em>Agent ID</em> holders can mint",
       "hero.sub": "Each mint costs <b>{price}</b> USDT for <b>{perMint}</b> {symbol}, max <b>{limit}</b> per wallet.<br />Enter your address → auto-check eligibility → copy the command to your AI agent.",
       "hero.loading": "Loading on-chain parameters…",
@@ -471,7 +520,11 @@ Important: never transfer USDT directly to the mint contract. Always approve the
       c.MAX_SUPPLY().catch(() => 0n),
     ]);
 
-    info = { c, u, contract: await c.getAddress(), name, symbol, price, perMint, maxPerWallet, maxMints, mintCount, deadline, launched, usdtDec, nft, usdtRaised, totalSupply, maxSupply };
+    // 探测合约版本：含新选择器 0x836a1040 说明是 shares 版，否则是旧的无参 mint()
+    const code = await provider.getCode(await c.getAddress()).catch(() => "0x");
+    const mintVer = code && code.includes("836a1040") ? "shares" : "single";
+
+    info = { c, u, contract: await c.getAddress(), name, symbol, price, perMint, maxPerWallet, maxMints, mintCount, deadline, launched, usdtDec, nft, usdtRaised, totalSupply, maxSupply, mintVer };
 
     heroVals = {
       price: ethers.formatUnits(price, usdtDec),
@@ -594,23 +647,35 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     const name = info && info.name ? info.name : "Agent AI";
     const totalText = Number(ethers.formatUnits(BigInt(info ? info.perMint : 0n) * shares, 18)).toLocaleString("en-US");
 
+    const ver = info ? info.mintVer : "shares"; // 旧合约（无参 mint）走兼容分支
+
     // approve(mint 合约, maxCost)
     const approveData = "0x095ea7b3" + ethers.AbiCoder.defaultAbiCoder().encode(["address", "uint256"], [cAddr, maxCost]).slice(2);
-    // mint(shares, referrer, maxCost)：一次交易买 count 份，referrer 传零地址
-    const mintData = MINT_SIG + ethers.AbiCoder.defaultAbiCoder()
-      .encode(["uint256", "address", "uint256"], [shares, ethers.ZeroAddress, maxCost]).slice(2);
+    // 新版：mint(shares, referrer, maxCost) 一次交易买 count 份；旧版：无参 mint()，每笔 1 份
+    const mintData = ver === "shares"
+      ? MINT_SIG + ethers.AbiCoder.defaultAbiCoder()
+        .encode(["uint256", "address", "uint256"], [shares, ethers.ZeroAddress, maxCost]).slice(2)
+      : MINT_SIG_LEGACY;
 
     const tid = $("tokenId").value.trim();
     const ids = [];
     if (resolved && resolved.name) ids.push(`${LANG === "zh" ? "我的 Agent ID 名称" : "My Agent ID name"}: ${resolved.name}`);
     if (tid) ids.push(`${LANG === "zh" ? "我的 Agent ID 编号" : "My Agent ID number"}: #${tid}`);
     const idLine = ids.length ? "\n" + ids.join("\n") : "";
-
-    return t("cmd.body", {
+    const vars = {
       chain: String(CHAIN_ID), addr: a, idLine, amountText, uAddr, approveData,
       cAddr, mintData, mintSig: MINT_SIG, count: String(count), priceText,
       costText, totalText, perMint, name,
-    });
+    };
+
+    if (ver === "single") {
+      const tail = count > 1
+        ? LANG === "zh" ? `第 2～${count + 1} 笔` : `Tx 2-${count + 1}`
+        : LANG === "zh" ? "第 2 笔" : "Tx 2";
+      return t("cmd.body.legacy", Object.assign(vars, { tail }));
+    }
+
+    return t("cmd.body", vars);
   }
 
   async function generate() {
@@ -629,9 +694,11 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   // 币安登录页；return_to 用 base64 编码当前页面，登录后自动跳回
   const BINANCE_LOGIN = "https://accounts.binance.com/en/login";
 
-  // ⚠️ WalletConnect projectId：到 https://dashboard.reown.com（原 walletconnect.com）
-  //    免费注册一个项目即可拿到，填在下面的引号里，否则扫码连接不可用。
-  const WC_PROJECT_ID = "";
+  // WalletConnect projectId：优先用页面上填的（存本机 localStorage），没填就是空 → 扫码不可用
+  const WC_PID_KEY = "agt_wc_pid";
+  function wcProjectId() {
+    return (localStorage.getItem(WC_PID_KEY) || "").trim();
+  }
 
   function binanceLoginUrl() {
     let back = "";
@@ -666,14 +733,15 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     // 浏览器里没有钱包 → WalletConnect v2 扫码连币安 App
     const W = window.WCMint;
     if (W && W.EthereumProvider) {
-      if (!WC_PROJECT_ID) {
+      const pid = wcProjectId();
+      if (!pid) {
         toast(t("wc.needId"), "err");
         return;
       }
       try {
         toast(t("wc.connecting"));
         wcProvider = await W.EthereumProvider.init({
-          projectId: WC_PROJECT_ID,
+          projectId: pid,
           chains: [CHAIN_ID],
           optionalChains: [CHAIN_ID],
           showQrModal: false,
@@ -758,15 +826,26 @@ Important: never transfer USDT directly to the mint contract. Always approve the
         if (wtx) wtx.innerHTML = txLink(t("tx.approve"), tx1.hash);
       }
 
-      // 2) 铸造
+      // 2) 铸造（新版一笔买完；旧版无参 mint()，每笔 1 份，逐笔发）
       toast(t("t.minting"));
-      const tx2 = await signer.sendTransaction({
-        to: cAddr,
-        data: MINT_SIG + ethers.AbiCoder.defaultAbiCoder().encode(["uint256", "address", "uint256"], [shares, ethers.ZeroAddress, maxCost]).slice(2),
-      });
-      const rc = await tx2.wait();
+      const ver = info.mintVer === "shares" ? "shares" : "single";
+      const newData = MINT_SIG + ethers.AbiCoder.defaultAbiCoder()
+        .encode(["uint256", "address", "uint256"], [shares, ethers.ZeroAddress, maxCost]).slice(2);
+      const times = ver === "shares" ? 1 : Number(shares);
+      const hashes = [];
+      let gasUsed = 0n;
+      for (let i = 0; i < times; i++) {
+        if (i > 0) toast(`${t("t.minting")} (${i + 1}/${times})`);
+        const tx2 = await signer.sendTransaction({ to: cAddr, data: ver === "shares" ? newData : MINT_SIG_LEGACY });
+        const rc = await tx2.wait();
+        hashes.push(tx2.hash);
+        gasUsed += rc.gasUsed;
+      }
       toast(t("t.mintOk"), "ok");
-      if (wtx) wtx.innerHTML = `${txLink(t("tx.mint"), tx2.hash)} · ${t("tx.gas")}: ${rc.gasUsed}`;
+      if (wtx)
+        wtx.innerHTML = hashes
+          .map((h, i) => txLink(times > 1 ? `${t("tx.mint")} ${i + 1}` : t("tx.mint"), h))
+          .join(" · ") + ` · ${t("tx.gas")}: ${gasUsed}`;
       loadInfo().catch(() => {});
     } catch (e) {
       toast(e.shortMessage || e.message || t("t.mintFail"), "err");
@@ -797,6 +876,15 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   const _connectBtn = $("connectBtn");
   if (_connectBtn) _connectBtn.addEventListener("click", connect);
   if ($("walletMintBtn")) $("walletMintBtn").addEventListener("click", mintWithWallet);
+
+  // WalletConnect projectId：填一次存本机
+  if ($("wcPid")) {
+    $("wcPid").value = wcProjectId();
+    $("wcPid").addEventListener("change", () => {
+      localStorage.setItem(WC_PID_KEY, $("wcPid").value.trim());
+      toast(t("wc.pidSaved"), "ok");
+    });
+  }
   if ($("qrClose")) $("qrClose").addEventListener("click", closeQr);
   if ($("qrModal"))
     $("qrModal").addEventListener("click", (e) => {
