@@ -23,10 +23,18 @@
       "btn.connect": "连接币安钱包",
       "btn.walletMint": "一键铸造（Mint）",
       "wc.hint": "连接持有你 .ai Agent ID 的币安钱包，即可在本页直接铸造（approve + mint 两笔交易）",
-      "wc.title": "扫码连接币安钱包",
-      "wc.tip": "用币安 App 扫二维码，或点下面按钮跳转授权；授权成功后回到本页点「用钱包直接铸造」",
-      "wc.cancel": "取消",
-      "wc.openApp": "打开币安 App 授权",
+      "wc.title": "代理钱包",
+      "wc.tip": "连接币安代理钱包以读取此钱包上的 .ai 代理 ID。",
+      "wc.badgeConnecting": "连接中",
+      "wc.badgeOk": "已连接",
+      "wc.pairLabel": "配对码",
+      "wc.pairTip": "用币安 App 扫码，确认配对码一致后再确认授权。",
+      "wc.afterConfirm": "你确认后，本页会自动切换到你的钱包。",
+      "wc.waiting": "正在等待币安 App",
+      "wc.regular": "使用普通钱包",
+      "wc.noInjected": "没有检测到浏览器钱包插件",
+      "wc.openApp": "打开币安登录",
+      "wc.cancel": "取消连接",
       "wc.notBinance": "检测到非币安钱包（如小狐狸）。本页只连币安钱包：请在币安 App 内打开本站，或安装币安钱包插件，也可用扫码连接。",
       "wc.scanMode": "未检测到币安钱包：点「一键铸造」会弹出二维码，用币安 App 扫码授权后自动完成铸造。",
       "wc.copyLink": "复制本站网址",
@@ -195,10 +203,18 @@
       "btn.connect": "Connect Binance Wallet",
       "btn.walletMint": "Mint now",
       "wc.hint": "Connect the Binance wallet that holds your .ai Agent ID to mint directly on this page (approve + mint)",
-      "wc.title": "Scan to connect Binance Wallet",
-      "wc.tip": "Scan with the Binance App, or use the button below to jump to it; once approved, come back and press \"Mint with wallet\"",
-      "wc.cancel": "Cancel",
-      "wc.openApp": "Open Binance App to approve",
+      "wc.title": "Agent Wallet",
+      "wc.tip": "Connect Binance Agent Wallet to read the .ai Agent ID on this wallet.",
+      "wc.badgeConnecting": "Connecting",
+      "wc.badgeOk": "Connected",
+      "wc.pairLabel": "Pairing code",
+      "wc.pairTip": "Scan with the Binance App, then check that the pairing code matches before confirming.",
+      "wc.afterConfirm": "After you confirm, this page switches to your wallet.",
+      "wc.waiting": "Waiting for the Binance App",
+      "wc.regular": "Use a regular wallet",
+      "wc.noInjected": "No browser wallet detected",
+      "wc.openApp": "Open Binance sign-in",
+      "wc.cancel": "Cancel connection",
       "wc.notBinance": "A non-Binance wallet (e.g. MetaMask) was detected. This page only connects to Binance Wallet: open this site inside the Binance App, install the Binance Wallet extension, or use the QR option.",
       "wc.scanMode": "No Binance Wallet detected: pressing \"Mint now\" shows a QR code — scan it with the Binance App and the mint completes automatically.",
       "wc.copyLink": "Copy page URL",
@@ -814,6 +830,11 @@ Important: never transfer USDT directly to the mint contract. Always approve the
         const accs = await wcProvider.request({ method: "eth_requestAccounts" });
         clearSlow();
         closeQr();
+        const badge = $("awBadge");
+        if (badge) {
+          badge.textContent = t("wc.badgeOk");
+          badge.classList.add("ok");
+        }
         walletProvider = wcProvider;
         setAccount(accs[0]);
         connMsg(t("wc.connected") + " " + shortAddr(accs[0]));
@@ -869,7 +890,17 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     if (open) open.href = wcOpenUrl(uri);
     const m = $("qrModal");
     if (m) m.classList.remove("hidden");
+    // 配对码（jager 同款）：取 WC 会话 topic 前 6 位，币安 App 端会显示同样的码供比对
+    const tm = String(uri).match(/^wc:([0-9a-fA-F]+)@/);
+    const pair = $("awPair");
+    if (pair) pair.textContent = tm ? tm[1].slice(0, 6).toUpperCase() : "——";
+    const badge = $("awBadge");
+    if (badge) {
+      badge.textContent = t("wc.badgeConnecting");
+      badge.classList.remove("ok");
+    }
     connMsg(t("wc.qrReady"));
+    startWaitTimer();
     // 手机浏览器：自动开新标签唤起币安 App 授权（不卸载本页，连接状态才不会丢）
     if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) {
       try {
@@ -878,9 +909,35 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     }
   }
 
+  // 「正在等待币安 App · Ns」计时器（对齐 jager）
+  let waitTimer = null;
+  let waitStart = 0;
+
+  function startWaitTimer() {
+    stopWaitTimer();
+    waitStart = Date.now();
+    const el = $("awWait");
+    if (!el) return;
+    const tick = () => {
+      el.textContent = `${t("wc.waiting")} · ${Math.floor((Date.now() - waitStart) / 1000)}s`;
+    };
+    tick();
+    waitTimer = setInterval(tick, 1000);
+  }
+
+  function stopWaitTimer() {
+    if (waitTimer) {
+      clearInterval(waitTimer);
+      waitTimer = null;
+    }
+    const el = $("awWait");
+    if (el) el.textContent = "";
+  }
+
   function closeQr() {
     const m = $("qrModal");
     if (m) m.classList.add("hidden");
+    stopWaitTimer();
   }
 
   /* ---------- 网页直接铸造（钱包签名） ---------- */
@@ -1027,6 +1084,14 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     });
   }
   if ($("qrClose")) $("qrClose").addEventListener("click", closeQr);
+  if ($("qrCancel")) $("qrCancel").addEventListener("click", closeQr);
+  if ($("qrRegular"))
+    $("qrRegular").addEventListener("click", () => {
+      closeQr();
+      const w = injectedWallet();
+      if (w) connect();
+      else toast(t("wc.noInjected"), "err");
+    });
   if ($("wcOpen"))
     $("wcOpen").addEventListener("click", (e) => {
       if (!lastUri) {

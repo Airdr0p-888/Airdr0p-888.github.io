@@ -220,16 +220,26 @@
 
 <div id="toast"></div>
 
-<!-- WalletConnect 扫码弹层 -->
+<!-- 代理钱包连接弹层（对齐 jager 的 Agent Wallet） -->
 <div id="qrModal" class="modal hidden">
   <div class="modal-box">
-    <h3 data-i18n="wc.title">扫码连接币安钱包</h3>
-    <div class="qr" id="qrBox"></div>
-    <p class="hint" data-i18n="wc.tip">用币安 App 扫二维码，或点下面按钮跳转授权；授权成功后回到本页点「用钱包直接铸造」</p>
-    <div class="btn-row">
-      <a id="wcOpen" class="btn btn-primary" href="#" target="_blank" rel="noopener" data-i18n="wc.openApp">打开币安 App 授权</a>
-      <button id="qrClose" class="btn btn-ghost" data-i18n="wc.cancel">取消</button>
+    <div class="aw-head">
+      <h3 data-i18n="wc.title">代理钱包</h3>
+      <span class="aw-badge" id="awBadge" data-i18n="wc.badgeConnecting">连接中</span>
+      <button class="aw-x" id="qrClose" title="关闭">×</button>
     </div>
+    <p class="hint" data-i18n="wc.tip">连接币安代理钱包以读取此钱包上的 .ai 代理 ID。</p>
+    <div class="aw-qrwrap">
+      <div class="qr" id="qrBox"></div>
+      <div class="aw-pair-label" data-i18n="wc.pairLabel">配对码</div>
+      <div class="aw-pair" id="awPair">——</div>
+      <p class="hint" data-i18n="wc.pairTip">用币安 App 扫码，确认配对码一致后再确认授权。</p>
+    </div>
+    <a id="wcOpen" class="aw-link" href="#" target="_blank" rel="noopener" data-i18n="wc.openApp">打开币安登录</a>
+    <div class="aw-wait" id="awWait"></div>
+    <p class="hint aw-center" data-i18n="wc.afterConfirm">你确认后，本页会自动切换到你的钱包。</p>
+    <button id="qrCancel" class="aw-cancel" data-i18n="wc.cancel">取消连接</button>
+    <button id="qrRegular" class="aw-regular" data-i18n="wc.regular">使用普通钱包</button>
   </div>
 </div>
 
