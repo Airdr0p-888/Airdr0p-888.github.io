@@ -21,12 +21,17 @@
     zh: {
       "brand.sub": "Agent ID 专属铸造 · BSC",
       "btn.connect": "连接币安钱包",
-      "btn.walletMint": "用钱包直接铸造",
-      "wc.hint": "连接币安钱包后可在网页直接铸造（approve + mint 两笔交易）",
+      "btn.walletMint": "一键铸造（Mint）",
+      "wc.hint": "连接持有你 .ai Agent ID 的币安钱包，即可在本页直接铸造（approve + mint 两笔交易）",
       "wc.title": "扫码连接币安钱包",
       "wc.tip": "用币安 App 扫二维码，或点下面按钮跳转授权；授权成功后回到本页点「用钱包直接铸造」",
       "wc.cancel": "取消",
       "wc.openApp": "打开币安 App 授权",
+      "wc.notBinance": "检测到非币安钱包（如小狐狸）。本页只连币安钱包：请在币安 App 内打开本站，或安装币安钱包插件，也可用扫码连接。",
+      "wc.scanMode": "未检测到币安钱包：点「一键铸造」会弹出二维码，用币安 App 扫码授权后自动完成铸造。",
+      "wc.copyLink": "复制本站网址",
+      "wc.copyLinkOk": "网址已复制，粘到币安 App 内打开即可直接连钱包铸造",
+      "wc.connectingFirst": "正在连接币安钱包…",
       "wc.needId": "未配置 WalletConnect projectId，扫码连接不可用",
       "wc.pidSaved": "projectId 已保存",
       "wc.connecting": "正在建立连接…",
@@ -185,12 +190,17 @@
     en: {
       "brand.sub": "Agent ID exclusive mint · BSC",
       "btn.connect": "Connect Binance Wallet",
-      "btn.walletMint": "Mint with wallet",
-      "wc.hint": "Connect your Binance wallet to mint directly on this page (approve + mint)",
+      "btn.walletMint": "Mint now",
+      "wc.hint": "Connect the Binance wallet that holds your .ai Agent ID to mint directly on this page (approve + mint)",
       "wc.title": "Scan to connect Binance Wallet",
       "wc.tip": "Scan with the Binance App, or use the button below to jump to it; once approved, come back and press \"Mint with wallet\"",
       "wc.cancel": "Cancel",
       "wc.openApp": "Open Binance App to approve",
+      "wc.notBinance": "A non-Binance wallet (e.g. MetaMask) was detected. This page only connects to Binance Wallet: open this site inside the Binance App, install the Binance Wallet extension, or use the QR option.",
+      "wc.scanMode": "No Binance Wallet detected: pressing \"Mint now\" shows a QR code — scan it with the Binance App and the mint completes automatically.",
+      "wc.copyLink": "Copy page URL",
+      "wc.copyLinkOk": "URL copied — open it inside the Binance App to connect your wallet and mint",
+      "wc.connectingFirst": "Connecting Binance Wallet…",
       "wc.needId": "WalletConnect projectId not configured — QR connect unavailable",
       "wc.pidSaved": "projectId saved",
       "wc.connecting": "Connecting…",
@@ -730,12 +740,23 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     return back ? `${BINANCE_LOGIN}?return_to=${encodeURIComponent(back)}` : BINANCE_LOGIN;
   }
 
-  // 只认币安钱包：App 内 DApp 浏览器是 window.binancew3w.ethereum，插件带 isBinance 标记。
-  // 其他钱包（小狐狸等）一律不用，避免点了「连接币安钱包」却弹出 MetaMask。
+  /* 只认币安钱包，与 jager.live 的检测方式完全一致：
+     ① EIP-6963 公告里 rdns 含 "binance" 的 provider（最规范，能同时装多个钱包也不混淆）
+     ② window.ethereum.isBinance / window.BinanceChain（币安钱包插件）
+     ③ window.binancew3w.ethereum（币安 App 内置浏览器）
+     小狐狸等其他钱包一律不用，避免点了「连接币安钱包」却弹 MetaMask。 */
+  const eip6963 = [];
+  window.addEventListener("eip6963:announceProvider", (e) => {
+    if (e && e.detail && e.detail.info && e.detail.provider) eip6963.push(e.detail);
+  });
+
   function injectedWallet() {
-    if (window.binancew3w && window.binancew3w.ethereum) return window.binancew3w.ethereum;
+    const binance = eip6963.filter((d) => String((d.info && d.info.rdns) || "").toLowerCase().includes("binance"));
+    if (binance.length) return binance[0].provider;
     const e = window.ethereum;
     if (e && (e.isBinance || e.isBinanceWeb3Wallet || e.isBinanceW3W)) return e;
+    if (window.BinanceChain) return window.BinanceChain;
+    if (window.binancew3w && window.binancew3w.ethereum) return window.binancew3w.ethereum;
     return null;
   }
 
@@ -836,7 +857,12 @@ Important: never transfer USDT directly to the mint contract. Always approve the
       if (wtx0) wtx0.innerHTML = `<span class="err">${msg}</span>`;
     };
 
-    if (!walletProvider) return fail(t("wc.needConnect"));
+    // 没连钱包就先连（弹二维码 / 唤起币安 App），连上后自动接着铸造 —— 点一次就行
+    if (!walletProvider) {
+      toast(t("wc.connectingFirst"));
+      await connect();
+      if (!walletProvider) return fail(t("wc.needConnect"));
+    }
     if (!info) {
       try {
         await loadInfo();
@@ -924,6 +950,37 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   const _connectBtn = $("connectBtn");
   if (_connectBtn) _connectBtn.addEventListener("click", connect);
   if ($("walletMintBtn")) $("walletMintBtn").addEventListener("click", mintWithWallet);
+
+  // 环境提示：告诉用户当前浏览器能不能直接连币安钱包
+  (function envHint() {
+    const eg = window.ethereum;
+    const hasBinance =
+      !!injectedWallet() ||
+      !!(eg && (eg.isBinance || eg.isBinanceWeb3Wallet || eg.isBinanceW3W)) ||
+      !!window.BinanceChain ||
+      !!(window.binancew3w && window.binancew3w.ethereum);
+    const other = !!eg && !hasBinance;
+    const h1 = $("hintNoBinance");
+    const h2 = $("hintScan");
+    if (h1) h1.classList.toggle("hidden", !other);
+    if (h2) h2.classList.toggle("hidden", hasBinance || other);
+  })();
+
+  // 复制本站网址，方便粘到币安 App 里打开（App 内即可直接连钱包铸造）
+  if ($("copyLinkBtn"))
+    $("copyLinkBtn").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(location.href);
+        toast(t("wc.copyLinkOk"), "ok");
+      } catch {
+        toast(location.href, "ok");
+      }
+    });
+
+  // 让已安装的钱包通过 EIP-6963 主动上报，稍后 connect() 才能找到它
+  try {
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+  } catch {}
 
   // WalletConnect projectId：填一次存本机
   if ($("wcPid")) {
