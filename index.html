@@ -18,62 +18,20 @@
     </div>
   </div>
   <div class="topbar-actions">
+    <button id="connectBtn" class="btn btn-primary" data-i18n="btn.connect">Connect wallet</button>
     <button id="langBtn" class="btn btn-ghost" title="中文 / English">EN</button>
-    <button id="connectBtn" class="btn btn-primary" data-i18n="btn.connect">Connect Binance Wallet</button>
   </div>
 </header>
 
 <section class="hero">
-  <h2 data-i18n-html="hero.title">持有币安 <em>Agent ID</em> 才能铸造</h2>
+  <h2 data-i18n-html="hero.title">Hold Binance <em>Agent ID</em> · 1–10 mints</h2>
   <p data-i18n-html="hero.sub">
-    下面填地址 → 自动检查资格 → 复制指令发给你的 AI 代理即可。
+    Each share costs <b>0.01</b> USDT for <b>5,250</b> AGT.<br />
+    Holding ≥1 Agent ID: <b>1–10</b> mints. No Agent ID: <b>1</b> mint after connecting a wallet.
   </p>
 </section>
 
 <main>
-  <!-- 连接状态 / 错误（常驻显示，方便排查） -->
-  <div id="connMsg" class="hint"></div>
-
-  <!-- 环境诊断：连不上钱包时点开，把内容发来定位 -->
-  <details class="adv" id="diagBox">
-    <summary data-i18n="wc.diagTitle">环境诊断（连不上钱包时点开这里）</summary>
-    <pre id="diag" class="diag"></pre>
-    <button id="diagCopy" class="btn btn-ghost btn-xs" data-i18n="wc.diagCopy">复制诊断信息</button>
-    <button id="diagReload" class="btn btn-ghost btn-xs" data-i18n="wc.diagReload">重新检测</button>
-    <button id="netTest" class="btn btn-ghost btn-xs" data-i18n="wc.netTest">测试连接服务</button>
-    <pre id="netOut" class="diag hidden"></pre>
-  </details>
-
-  <!-- 币安 AI 钱包（Agentic Wallet）铸造入口 -->
-  <div class="card card-ai">
-    <h3 data-i18n="ai.title">用币安 AI 钱包（Agentic Wallet）铸造</h3>
-    <ul class="notes">
-      <li data-i18n="ai.s1">本页填地址 → 选份数 → 点「生成 AI 指令」，指令会<b>自动复制</b>。</li>
-      <li data-i18n="ai.s2">把指令发给你自己的 AI 代理（需已安装币安 Agentic Wallet 的 <code>baw</code> CLI 并开启 devMode）。</li>
-      <li data-i18n="ai.s3">代理会用你的 AI 钱包完成 approve + mint，每笔都会先 preview 并等你确认。</li>
-    </ul>
-    <p class="hint" data-i18n="ai.note">Agentic Wallet 是给 AI 代理用的钱包，没有网页连接接口，所以本页无法直接连接它 —— 与 jager.live 的做法一致：网页生成指令，AI 代理执行铸造。</p>
-  </div>
-
-  <!-- Mint 进度 -->
-  <div class="card prog">
-    <div class="prog-head">
-      <h3 data-i18n="prog.title">Mint 进度</h3>
-      <span class="status" id="prog_status" data-i18n="prog.loading">读取中…</span>
-    </div>
-    <div class="bar"><i id="prog_bar"></i></div>
-    <div class="prog-line">
-      <b id="prog_pct">0%</b>
-      <span id="prog_of" data-i18n="prog.loading">读取中…</span>
-    </div>
-    <ul class="prog-stats">
-      <li><span data-i18n="prog.raised">已募资</span><b id="prog_raised">—</b></li>
-      <li><span data-i18n="prog.supply">当前总供应</span><b id="prog_supply">—</b></li>
-      <li><span data-i18n="prog.left">剩余份数</span><b id="prog_left">—</b></li>
-      <li><span data-i18n="prog.deadline">截止时间</span><b id="prog_deadline">—</b></li>
-    </ul>
-  </div>
-
   <div class="grid">
     <!-- 铸造区 -->
     <div class="card">
@@ -93,7 +51,7 @@
         <div class="field">
           <label data-i18n="label.count">铸造次数</label>
           <select id="count"></select>
-          <span class="hint" data-i18n="hint.count">实际可 mint 次数受合约单地址上限约束，点「检查资格」看剩余额度</span>
+          <span id="countHint" class="hint">Holding ≥1 Agent ID: pick 1–10. No Agent ID: 1 mint only.</span>
         </div>
       </div>
 
@@ -102,24 +60,12 @@
         <div class="field"><label data-i18n="label.contract">合约地址</label><input id="contract" value="0x245E6156B43253f76A8B201Ca8fdc82bDF9064e0" /></div>
         <div class="field"><label data-i18n="label.usdt">USDT 合约</label><input id="usdt" value="0x55d398326f99059fF775485246999027B3197955" /></div>
         <div class="field"><label data-i18n="label.nft">Agent ID NFT</label><input id="nft" value="0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F" /></div>
-        <div class="field">
-          <label>WalletConnect projectId（扫码连接必填）</label>
-          <input id="wcPid" placeholder="到 dashboard.reown.com 免费注册获取" />
-          <span class="hint">填一次会记在本机；留空则扫码不可用（在币安 App 内打开本站不受影响）</span>
-        </div>
       </details>
 
       <div class="btn-row">
-        <button id="walletMintBtn" class="btn btn-primary btn-lg" data-i18n="btn.walletMint">一键铸造（Mint）</button>
-      </div>
-      <div class="btn-row">
-        <button id="checkBtn" class="btn btn-ghost" data-i18n="btn.check">检查资格</button>
+        <button id="checkBtn" class="btn btn-primary" data-i18n="btn.check">检查资格</button>
         <button id="genBtn" class="btn btn-ghost" data-i18n="btn.gen">生成 AI 指令</button>
       </div>
-      <div id="wtx" class="hint"></div>
-      <p id="hintNoBinance" class="hint hidden" data-i18n="wc.notBinance">检测到非币安钱包（如小狐狸）。本页只连接币安钱包：请在币安 App 内打开本站，或安装币安钱包插件，也可用扫码连接。</p>
-      <p id="hintScan" class="hint hidden" data-i18n="wc.scanMode">未检测到币安钱包：点「一键铸造」会弹出二维码，用币安 App 扫码授权后自动完成铸造。<button id="copyLinkBtn" class="btn btn-ghost btn-xs" data-i18n="wc.copyLink">复制本站网址</button></p>
-      <p class="hint" data-i18n="wc.hint">连接持有你 .ai Agent ID 的币安钱包，即可在本页直接铸造（approve + mint 两笔交易）</p>
 
       <div id="elig" class="elig"></div>
     </div>
@@ -145,8 +91,9 @@
       <div class="step">
         <div class="num">02</div>
         <h4 data-i18n="s2.h">检查资格</h4>
-        <p data-i18n="s2.p1">在上方铸造区输入你的 .ai 名称。这个地址需要有：</p>
+        <p data-i18n="s2.p1">在上方铸造区输入你的 .ai 名称，或点右上角「连接钱包」。这个地址需要有：</p>
         <ul>
+          <li data-i18n="s2.l4">未持有 Agent ID：连接钱包可铸造 1 次；持有 ≥1 个：可 1–10 次</li>
           <li data-i18n="s2.l1">Agent ID</li>
           <li><span data-i18n="s2.l2">每次</span> <span class="price">0.01</span> <span data-i18n="s2.l2b">USDT</span></li>
           <li data-i18n="s2.l3">少量 BNB 付手续费</li>
@@ -230,33 +177,7 @@
 
 <div id="toast"></div>
 
-<!-- 代理钱包连接弹层（对齐 jager 的 Agent Wallet） -->
-<div id="qrModal" class="modal hidden">
-  <div class="modal-box">
-    <div class="aw-head">
-      <h3 data-i18n="wc.title">代理钱包</h3>
-      <span class="aw-badge" id="awBadge" data-i18n="wc.badgeConnecting">连接中</span>
-      <button class="aw-x" id="qrClose" title="关闭">×</button>
-    </div>
-    <p class="hint" data-i18n="wc.tip">连接币安代理钱包以读取此钱包上的 .ai 代理 ID。</p>
-    <div class="aw-qrwrap">
-      <p class="hint" id="qrMode"></p>
-      <div class="qr" id="qrBox"></div>
-      <div class="aw-pair-label" data-i18n="wc.pairLabel">配对码</div>
-      <div class="aw-pair" id="awPair">——</div>
-      <p class="hint" data-i18n="wc.pairTip">用币安 App 扫码，确认配对码一致后再确认授权。</p>
-    </div>
-    <a id="wcOpen" class="aw-link" href="#" target="_blank" rel="noopener" data-i18n="wc.openApp">打开币安登录</a>
-    <div class="aw-wait" id="awWait"></div>
-    <p class="hint aw-center" data-i18n="wc.afterConfirm">你确认后，本页会自动切换到你的钱包。</p>
-    <button id="qrCancel" class="aw-cancel" data-i18n="wc.cancel">取消连接</button>
-    <button id="qrRegular" class="aw-regular" data-i18n="wc.regular">使用普通钱包</button>
-  </div>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
-<!-- WalletConnect v2 + 二维码（本地打包，无第三方依赖） -->
-<script src="vendor/wc.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

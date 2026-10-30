@@ -67,104 +67,6 @@ body {
 
 main { max-width: 1120px; margin: 0 auto; padding: 10px 24px 60px; }
 
-/* Mint 进度卡片 */
-.prog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.prog-head h3 { margin: 0 !important; }
-.prog .status {
-  font-size: 11.5px; padding: 3px 10px; border-radius: 20px; white-space: nowrap;
-  background: rgba(240,185,11,.12); color: var(--gold); border: 1px solid rgba(240,185,11,.35);
-}
-.prog .status.live { background: rgba(33,192,122,.12); color: var(--ok); border-color: rgba(33,192,122,.4); }
-.prog .status.launched { background: rgba(33,192,122,.12); color: var(--ok); border-color: rgba(33,192,122,.4); }
-.prog .status.ended { background: rgba(255,107,107,.12); color: var(--danger); border-color: rgba(255,107,107,.4); }
-
-.bar { height: 10px; border-radius: 20px; background: #0b101c; border: 1px solid var(--line); overflow: hidden; }
-.bar i {
-  display: block; height: 100%; width: 0;
-  background: linear-gradient(90deg, var(--gold), var(--gold-2));
-  border-radius: 20px; transition: width .5s ease;
-}
-.prog-line { display: flex; align-items: baseline; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--muted); }
-.prog-line b { font-size: 18px; color: var(--gold); font-weight: 800; }
-
-.prog-stats { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0 0; padding: 0; }
-@media (max-width: 700px) { .prog-stats { grid-template-columns: repeat(2, 1fr); } }
-.prog-stats li { background: #0b101c; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
-.prog-stats span { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; }
-.prog-stats b { font-size: 13px; color: var(--text); word-break: break-all; }
-
-/* AI 钱包入口卡片 */
-.card-ai { border-color: rgba(240, 185, 11, .35); background: linear-gradient(180deg, rgba(240, 185, 11, .07), transparent 60%); }
-.card-ai h3 { color: var(--gold); }
-.card-ai code { background: #0b101c; border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 11.5px; }
-
-/* 铸造结果 / 错误提示 */
-#wtx .err { color: var(--danger) !important; font-weight: 600; }
-#wtx a { color: var(--gold); }
-
-.hidden { display: none !important; }
-.btn-lg { width: 100%; padding: 12px 16px; font-size: 15px; font-weight: 700; letter-spacing: .2px; }
-.btn-xs { padding: 3px 8px; font-size: 11px; margin-left: 6px; }
-
-/* 代理钱包弹层（对齐 jager 的 Agent Wallet） */
-.aw-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.aw-head h3 { flex: 1; text-align: left; margin: 0 !important; }
-.aw-badge {
-  font-size: 11px; padding: 3px 10px; border-radius: 999px;
-  border: 1px solid var(--gold); color: var(--gold); white-space: nowrap;
-}
-.aw-x { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 2px 6px; }
-.aw-qrwrap {
-  margin: 12px 0; padding: 16px 12px; text-align: center;
-  border: 1px solid var(--line); border-radius: 12px;
-  background: rgba(255, 255, 255, .02);
-}
-.aw-pair-label { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-top: 10px; }
-.aw-pair { font-size: 24px; font-weight: 800; letter-spacing: .18em; color: var(--gold); font-family: ui-monospace, monospace; }
-.aw-link { display: block; color: var(--gold); text-decoration: underline; font-size: 13px; margin: 10px 0 4px; }
-.aw-wait { font-size: 12px; color: var(--muted); min-height: 16px; }
-.aw-center { text-align: center; }
-.aw-cancel {
-  width: 100%; margin-top: 10px; padding: 9px; background: none;
-  border: none; border-top: 1px solid var(--line); color: var(--text);
-  font-size: 13px; cursor: pointer;
-}
-.aw-regular {
-  width: 100%; padding: 9px; background: none; border: none;
-  color: var(--gold); text-decoration: underline; font-size: 13px; cursor: pointer;
-}
-.aw-badge.ok { color: #35c07f; border-color: #35c07f; }
-
-/* 环境诊断 / 状态栏 */
-#connMsg {
-  padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
-  background: rgba(255, 255, 255, .02); line-height: 1.7;
-}
-#connMsg:empty { display: none; }
-#connMsg a { color: var(--gold); text-decoration: underline; }
-.diag {
-  margin: 8px 0; padding: 10px 12px; font-size: 11.5px; line-height: 1.6;
-  white-space: pre-wrap; word-break: break-all;
-  background: rgba(0, 0, 0, .35); border: 1px solid var(--line); border-radius: 8px;
-  color: var(--muted); font-family: ui-monospace, monospace; max-height: 260px; overflow: auto;
-}
-
-/* WalletConnect 扫码弹层 */
-.modal {
-  position: fixed; inset: 0; z-index: 999;
-  background: rgba(5, 8, 14, .82); backdrop-filter: blur(3px);
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-}
-.modal.hidden { display: none; }
-.modal-box {
-  width: 100%; max-width: 340px; padding: 22px;
-  background: var(--card); border: 1px solid var(--line); border-radius: 16px; text-align: center;
-}
-.modal-box h3 { margin: 0 0 14px !important; }
-.qr { width: 240px; height: 240px; margin: 0 auto 12px; padding: 10px; background: #fff; border-radius: 12px; }
-.qr svg { display: block; }
-.modal-box .hint { font-size: 11.5px; }
-
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 
@@ -226,6 +128,9 @@ textarea { resize: vertical; font-family: ui-monospace, Consolas, monospace; fon
 .elig .row.ok i { color: var(--ok); }
 .elig .row.bad { border-color: rgba(255,107,107,.45); }
 .elig .row.bad i { color: var(--danger); }
+/* 中间态：可以铸造 1 次，但有附加条件 */
+.elig .row.warn { border-color: rgba(240,185,11,.45); }
+.elig .row.warn i { color: var(--gold); }
 .elig .row span { color: var(--muted); margin-left: auto; font-size: 12px; }
 
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
