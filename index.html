@@ -3,45 +3,79 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AGENT人生 · Agent ID 专属铸造</title>
+<!-- Render 部署完成后，替换为 https://你的服务.onrender.com/api/agent-wallet -->
+<meta name="agent-wallet-api" content="" />
+<title>Agent AI · Agent ID 专属铸造</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <div class="glow"></div>
 
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track" id="tickerTrack">
+    <span data-i18n="ticker.text">Mint 资金 100% 直接注入 LP 底池 · 买卖仅收 1% 税费，全部用于社区营销 · LP 自动锁仓至合约、永久锁定 · 合约零提取权限，安全透明无后门</span>
+  </div>
+</div>
+
 <header class="topbar">
   <div class="brand">
     <div class="logo">AI</div>
     <div>
-      <h1>AGENT人生 <span class="tag">AGT</span></h1>
+      <h1>Agent AI <span class="tag">AGT</span></h1>
       <p data-i18n="brand.sub">Agent ID 专属铸造 · BSC</p>
     </div>
   </div>
   <div class="topbar-actions">
-    <button id="connectBtn" class="btn btn-primary" data-i18n="btn.connect">Connect wallet</button>
+    <a class="btn btn-ghost" href="whitepaper.html" data-i18n="nav.wp">白皮书</a>
     <button id="langBtn" class="btn btn-ghost" title="中文 / English">EN</button>
   </div>
 </header>
 
 <section class="hero">
-  <h2 data-i18n-html="hero.title">Hold Binance <em>Agent ID</em> · 1–10 mints</h2>
+  <h2 data-i18n-html="hero.title">持有币安 <em>Agent ID</em> 才能铸造</h2>
   <p data-i18n-html="hero.sub">
-    Each share costs <b>0.01</b> USDT for <b>5,250</b> AGT.<br />
-    Holding ≥1 Agent ID: <b>1–10</b> mints. No Agent ID: <b>1</b> mint after connecting a wallet.
+    下面填地址 → 自动检查资格 → 复制指令发给你的 AI 代理即可。
   </p>
 </section>
 
 <main>
+  <!-- 连接状态 / 错误（常驻显示，方便排查） -->
+  <div id="connMsg" class="hint"></div>
+
+  <!-- 币安 AI 钱包（Agentic Wallet）铸造入口 -->
+  <div class="card card-ai">
+    <h3 data-i18n="ai.title">用币安 AI 钱包（Agentic Wallet）铸造</h3>
+    <ul class="notes">
+      <li data-i18n="ai.s1">本页填地址 → 选份数 → 点「生成 AI 指令」，指令会<b>自动复制</b>。</li>
+      <li data-i18n="ai.s2">把指令发给你自己的 AI 代理（需已安装币安 Agentic Wallet 的 <code>baw</code> CLI 并开启 devMode）。</li>
+      <li data-i18n="ai.s3">代理会用你的 AI 钱包完成 approve + mint，每笔都会先 preview 并等你确认。</li>
+    </ul>
+    <p class="hint" data-i18n="ai.note">Agentic Wallet 是给 AI 代理用的钱包，没有网页连接接口，所以本页无法直接连接它 —— 与 jager.live 的做法一致：网页生成指令，AI 代理执行铸造。</p>
+  </div>
+
+  <!-- Mint 进度 -->
+  <div class="card prog">
+    <div class="prog-head">
+      <h3 data-i18n="prog.title">Mint 进度</h3>
+      <span class="status" id="prog_status" data-i18n="prog.loading">读取中…</span>
+    </div>
+    <div class="bar"><i id="prog_bar"></i></div>
+    <div class="prog-line">
+      <b id="prog_pct">0%</b>
+      <span id="prog_of" data-i18n="prog.loading">读取中…</span>
+    </div>
+    <ul class="prog-stats">
+      <li><span data-i18n="prog.raised">已募资</span><b id="prog_raised">—</b></li>
+      <li><span data-i18n="prog.supply">当前总供应</span><b id="prog_supply">—</b></li>
+      <li><span data-i18n="prog.left">剩余份数</span><b id="prog_left">—</b></li>
+      <li><span data-i18n="prog.deadline">截止时间</span><b id="prog_deadline">—</b></li>
+    </ul>
+  </div>
+
   <div class="grid">
     <!-- 铸造区 -->
     <div class="card">
       <h3 data-i18n="card.mint">铸造区</h3>
-
-      <div class="field">
-        <label data-i18n="label.addr">钱包地址 / .ai 名称</label>
-        <input id="addr" data-i18n-ph="ph.addr" placeholder="0x… 或 yourname.ai" />
-        <span class="hint" data-i18n="hint.addr">填 .ai 名称（如 aveai）会自动解析成地址；也可直接填 0x 地址</span>
-      </div>
 
       <div class="field-row">
         <div class="field">
@@ -49,25 +83,22 @@
           <input id="tokenId" data-i18n-ph="ph.tokenId" placeholder="例如 1234" />
         </div>
         <div class="field">
-          <label data-i18n="label.count">铸造次数</label>
+          <label data-i18n="label.count">铸造份数</label>
           <select id="count"></select>
-          <span id="countHint" class="hint">Holding ≥1 Agent ID: pick 1–10. No Agent ID: 1 mint only.</span>
+          <span class="hint" data-i18n="hint.count">选择要铸造的份数（1–10），生成 AI 指令后由你的 AI 钱包一次性完成授权与铸造</span>
         </div>
       </div>
 
       <details class="adv">
         <summary data-i18n="adv.summary">高级：合约 / 代币参数</summary>
-        <div class="field"><label data-i18n="label.contract">合约地址</label><input id="contract" value="0xd43b3AaFd9147CF75f1C02B9bCdc8677310630Fc" /></div>
+        <div class="field"><label data-i18n="label.contract">合约地址</label><input id="contract" value="0xd43b3aafd9147cf75f1c02b9bcdc8677310630fc" /></div>
         <div class="field"><label data-i18n="label.usdt">USDT 合约</label><input id="usdt" value="0x55d398326f99059fF775485246999027B3197955" /></div>
         <div class="field"><label data-i18n="label.nft">Agent ID NFT</label><input id="nft" value="0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F" /></div>
       </details>
 
       <div class="btn-row">
-        <button id="checkBtn" class="btn btn-primary" data-i18n="btn.check">检查资格</button>
-        <button id="genBtn" class="btn btn-ghost" data-i18n="btn.gen">生成 AI 指令</button>
+        <button id="genBtn" class="btn btn-primary btn-lg" data-i18n="btn.gen">生成 AI 指令</button>
       </div>
-
-      <div id="elig" class="elig"></div>
     </div>
 
     <!-- 指令区 -->
@@ -91,9 +122,8 @@
       <div class="step">
         <div class="num">02</div>
         <h4 data-i18n="s2.h">检查资格</h4>
-        <p data-i18n="s2.p1">在上方铸造区输入你的 .ai 名称，或点右上角「连接钱包」。这个地址需要有：</p>
+        <p data-i18n="s2.p1">在上方铸造区输入你的 .ai 名称。这个地址需要有：</p>
         <ul>
-          <li data-i18n="s2.l4">未持有 Agent ID：连接钱包可铸造 1 次；持有 ≥1 个：可 1–10 次</li>
           <li data-i18n="s2.l1">Agent ID</li>
           <li><span data-i18n="s2.l2">每次</span> <span class="price">0.01</span> <span data-i18n="s2.l2b">USDT</span></li>
           <li data-i18n="s2.l3">少量 BNB 付手续费</li>
@@ -166,18 +196,20 @@
   <div class="card card-warn">
     <h3 data-i18n="card.warn">注意</h3>
     <ul class="notes">
-      <li data-i18n-html="w1">开盘前铸造到的 AGENT人生 <b>不可转账</b>，需等开盘后才能交易。</li>
+      <li data-i18n-html="w1">开盘前铸造到的 Agent AI <b>不可转账</b>，需等开盘后才能交易。</li>
       <li data-i18n="w2">每笔交易 AI 都会先 preview，请逐笔看清解析结果与风险再确认。</li>
       <li data-i18n="w3">本页只做地址填写与指令生成，不托管私钥、不代发交易。</li>
     </ul>
   </div>
 </main>
 
-<footer data-i18n="footer">AGENT人生 · AGT — 本页不托管资产，请自行核对合约地址</footer>
+<footer data-i18n="footer">Agent AI · AGT — 本页不托管资产，请自行核对合约地址 · <a href="whitepaper.html" data-i18n="nav.wp">白皮书</a></footer>
 
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<!-- WalletConnect v2 + 二维码（本地打包，无第三方依赖） -->
+<script src="vendor/wc.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
