@@ -946,6 +946,7 @@ If preview reports "execution reverted":
 
   /* GitHub Pages 通过自有 Render API 接入官方 baw CLI：二维码、会话和交易确认均由币安 App 完成。 */
   let agenticSession = "";
+  let qrAborted = false; // 取消扫码登录时为 true，pending 的 confirm 轮询回来即丢弃
   function agentApiUrl() {
     return (document.querySelector('meta[name="agent-wallet-api"]')?.content || "").trim().replace(/\/$/, "");
   }
@@ -963,6 +964,7 @@ If preview reports "execution reverted":
   }
   async function connectAgentic() {
     try {
+      qrAborted = false;
       connMsg("正在获取币安 Agentic Wallet 登录二维码…");
       const login = await agentCall("login");
       agenticSession = login.sessionId;
@@ -979,6 +981,7 @@ If preview reports "execution reverted":
       $("qrModal").classList.remove("hidden");
       $("awWait").textContent = "等待币安 App 扫码并确认…";
       const verified = await agentCall("confirm", { qrCodeId });
+      if (qrAborted) throw new Error("已取消登录");
       const wallet = await agentCall("wallet");
       const address = wallet.address;
       agenticProvider = {
@@ -1152,6 +1155,7 @@ If preview reports "execution reverted":
   }
 
   function closeQr() {
+    qrAborted = true;
     const m = $("qrModal");
     if (m) m.classList.add("hidden");
     stopWaitTimer();
