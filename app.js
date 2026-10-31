@@ -1029,7 +1029,7 @@ If preview reports "execution reverted":
           }
           if (method === "eth_sendTransaction") {
             const tx = params[0];
-            const preview = await agentCall("preview", { tx: { from: address, to: tx.to, value: tx.value || "0", inputData: tx.data || "0x", gasLimit: tx.gas ? String(tx.gas) : undefined } });
+            const preview = await agentCall("preview", { tx: { from: address, to: tx.to, value: tx.value || "0", inputData: tx.data || "0x" } });
             const requestId = nested(preview.result, ["requestId"]);
             if (!requestId) throw new Error("交易预览未返回 requestId");
             const executed = await agentCall("execute", { requestId });
