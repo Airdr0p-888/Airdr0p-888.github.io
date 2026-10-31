@@ -63,7 +63,7 @@
       "wc.pidSaved": "projectId 已保存",
       "wc.connecting": "正在建立连接…",
       "wc.connected": "钱包已连接",
-      "wc.needConnect": "请先点右上角连接币安钱包",
+      "wc.needConnect": "请先在铸造区连接币安钱包",
       "wc.needInfo": "链上参数还没读到，请稍等再试",
       "tx.mint": "铸造交易",
       "tx.approve": "授权交易",
@@ -269,7 +269,7 @@
       "wc.pidSaved": "projectId saved",
       "wc.connecting": "Connecting…",
       "wc.connected": "Wallet connected",
-      "wc.needConnect": "Connect your Binance wallet first (top right)",
+      "wc.needConnect": "Connect your Binance wallet first (in the mint box)",
       "wc.needInfo": "On-chain params not loaded yet, please retry",
       "tx.mint": "Mint tx",
       "tx.approve": "Approve tx",
@@ -947,6 +947,42 @@ If preview reports "execution reverted":
   /* GitHub Pages 通过自有 Render API 接入官方 baw CLI：二维码、会话和交易确认均由币安 App 完成。 */
   let agenticSession = "";
   let qrAborted = false; // 取消扫码登录时为 true，pending 的 confirm 轮询回来即丢弃
+
+  // 把节点返回的 revert 数据解码成人话（Error(string)=0x08c379a0 / Panic=0x4e487b71）
+  function decodeRevert(data) {
+    try {
+      if (typeof data !== "string" || !data.startsWith("0x")) return "";
+      if (data.startsWith("0x08c379a0")) {
+        return ethers.AbiCoder.defaultAbiCoder().decode(["string"], "0x" + data.slice(10))[0];
+      }
+      if (data.startsWith("0x4e487b71")) {
+        const code = BigInt("0x" + data.slice(10));
+        const panic = { 1: "assert 失败", 17: "算术溢出", 18: "除零" };
+        return "Panic(" + (panic[code] || code.toString()) + ")";
+      }
+    } catch {}
+    return "";
+  }
+
+  // 直接打公共 BSC RPC：错误不再被 ethers 包装成 "could not coalesce error"，真实原因直接抛出
+  async function rpcCall(method, params) {
+    let lastMsg = "";
+    let lastData = "";
+    for (const rpc of RPCS) {
+      try {
+        const response = await fetch(rpc, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+        const json = await response.json();
+        if (!json.error) return json.result;
+        lastMsg = (json.error && json.error.message) || "";
+        lastData = typeof (json.error && json.error.data) === "string" ? json.error.data : "";
+        if (lastData) break; // 带 revert 数据的是确定性错误，换节点结果一样
+      } catch (e) { lastMsg = String((e && e.message) || e); }
+    }
+    const reason = decodeRevert(lastData);
+    if (reason) throw new Error("合约拒绝: " + reason);
+    if (/revert/i.test(lastMsg)) throw new Error("合约拒绝: " + lastMsg);
+    throw new Error(method + " 请求失败: " + (lastMsg || "所有 BSC 公共节点均不可用"));
+  }
   function agentApiUrl() {
     return (document.querySelector('meta[name="agent-wallet-api"]')?.content || "").trim().replace(/\/$/, "");
   }
@@ -989,14 +1025,7 @@ If preview reports "execution reverted":
           if (method === "eth_chainId") return "0x38";
           if (method === "eth_accounts" || method === "eth_requestAccounts") return [address];
           if (["eth_blockNumber", "eth_getTransactionReceipt", "eth_getTransactionByHash", "eth_call", "eth_getBalance"].includes(method)) {
-            for (const rpc of RPCS) {
-              try {
-                const response = await fetch(rpc, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
-                const json = await response.json();
-                if (!json.error) return json.result;
-              } catch {}
-            }
-            throw new Error("BSC RPC unavailable");
+            return rpcCall(method, params);
           }
           if (method === "eth_sendTransaction") {
             const tx = params[0];
@@ -1011,14 +1040,7 @@ If preview reports "execution reverted":
           // 其余 eth_* 方法（estimateGas / gasPrice / getTransactionCount / maxPriorityFeePerGas 等）转发到 BSC 公共 RPC，
           // 让 ethers 能完成交易填充（populateTransaction），否则 sendTransaction 会直接抛错
           if (method.startsWith("eth_")) {
-            for (const rpc of RPCS) {
-              try {
-                const response = await fetch(rpc, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
-                const json = await response.json();
-                if (!json.error) return json.result;
-              } catch {}
-            }
-            throw new Error("BSC RPC unavailable for " + method);
+            return rpcCall(method, params);
           }
           throw new Error("Unsupported wallet method: " + method);
         },
@@ -1236,7 +1258,10 @@ If preview reports "execution reverted":
           .join(" · ") + ` · ${t("tx.gas")}: ${gasUsed}`;
       loadInfo().catch(() => {});
     } catch (e) {
-      fail(e.shortMessage || e.reason || e.message || t("t.mintFail"));
+      // ethers 会把底层错误包装成 "could not coalesce error"，真实原因在 info.error 里，挖出来直接显示
+      const nested = e && ((e.info && e.info.error) || e.error);
+      const real = (nested && nested.message) || e.shortMessage || e.reason || e.message || t("t.mintFail");
+      fail(String(real));
     }
   }
 
@@ -1270,6 +1295,10 @@ If preview reports "execution reverted":
   // 按钮可能不存在（老页面），加个空判断避免整个脚本挂掉
   const _connectBtn = $("connectBtn");
   if (_connectBtn) _connectBtn.addEventListener("click", connect);
+
+  // 取消按钮不能用内联 onclick（app.js 是 IIFE，closeQr 不是全局函数），必须在这里绑定
+  const _qrCancel = $("qrCancel");
+  if (_qrCancel) _qrCancel.addEventListener("click", closeQr);
 
   // 环境提示：告诉用户当前浏览器能不能直接连币安钱包
   (function envHint() {
