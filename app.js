@@ -141,10 +141,10 @@
       "p4.b": "Debox", "p4.s": "Debox 社群",
       "social.note": "搜索「请替换」即可找到待填链接；把 Telegram / X / Debox 三个换成你自己的地址。",
       "card.warn": "注意",
-      "w1": "开盘前铸造到的 AGT <b>不可转账</b>，需等开盘后才能交易。",
+      "w1": "开盘前铸造到的 AGENT人生 <b>不可转账</b>，需等开盘后才能交易。",
       "w2": "每笔交易 AI 都会先 preview，请逐笔看清解析结果与风险再确认。",
       "w3": "本页只做地址填写与指令生成，不托管私钥、不代发交易。",
-      "footer": "Agent人生 · AGT — 本页不托管资产，请自行核对合约地址",
+      "footer": "Agent人生 · AGENT人生 — 本页不托管资产，请自行核对合约地址",
 
       "el.addr": "地址",
       "el.name": "Agent ID 名称 {n}", "el.resolved": "已解析为上方地址",
@@ -185,7 +185,23 @@
       "ai.s1": "选好份数 → 点「生成 AI 指令」，指令会<b>自动复制</b>。",
       "ai.s2": "把指令发给你自己的 AI 代理（需已安装币安 Agentic Wallet 的 <code>baw</code> CLI 并开启 devMode）。",
       "ai.s3": "代理会用你的 AI 钱包完成 approve + mint，每笔都会先 preview 并等你确认。",
-      "ai.note": "本页支持两种方式：① 点右上「Connect Binance Wallet」用币安 AI 钱包直接铸造（扫码 → 在币安 App 确认）；② 或点「生成 AI 指令」交给 AI 代理执行。",
+      "ai.note": "本页支持两种方式：① 在铸造区点「连接币安钱包」直接铸造（扫码 → 在币安 App 确认）；② 或点「生成 AI 指令」交给 AI 代理执行。",
+      "sec.title": "合约安全检测",
+      "sec.verify": "BscScan 核验",
+      "sec.scoreLabel": "风险评分",
+      "sec.badges": "高危 0 · 中危 0 · 提示 2",
+      "sec.contract": "合约",
+      "sec.creator": "创建者 / 拥有者",
+      "sec.liquidity": "开盘动作",
+      "sec.liquidityV": "等量代币 + 募集 USDT 注入 PancakeSwap V2 交易对",
+      "sec.summaryTitle": "AI 概括",
+      "sec.summary": "AGENT人生 是固定配置的 ERC20，铸造阶段受指定 Agent ID NFT 持有门槛限制且有硬顶。每份支付 PRICE 并获得 5,250 枚代币；开盘时，合约将等量代币及募集到的 USDT 注入 PancakeSwap V2 交易对。开盘后，涉及交易对的转账收取 1% 手续费。",
+      "sec.taxTitle": "AI 税收检测",
+      "sec.t1": "买入税：1%",
+      "sec.t2": "卖出税：1%",
+      "sec.t3": "转账税：0%",
+      "sec.t4": "单钱包最大量：每地址 10 份 mint shares；开盘后无持币上限",
+      "sec.note": "以上为 AVE.ai 合约检测参考快照；铸造前请在 BscScan 自行核验合约源码。",
 
       "cmd.body": `我有币安 Agentic Wallet，请在 BSC（binanceChainId {chain}）上帮我铸造 {name}。{idLine}
 
@@ -346,10 +362,10 @@ Important: never transfer USDT directly to the mint contract. Always approve the
       "p4.b": "Debox", "p4.s": "Debox community",
       "social.note": "Search the file for the placeholder links and replace Telegram / X / Debox with your own.",
       "card.warn": "Notes",
-      "w1": "AGT minted before launch <b>cannot be transferred</b> until trading opens.",
+      "w1": "AGENT人生 minted before launch <b>cannot be transferred</b> until trading opens.",
       "w2": "Your AI previews every transaction — read each parsed result and risk note before confirming.",
       "w3": "This page only builds the command. It never holds your keys or sends transactions for you.",
-      "footer": "Agent人生 · AGT — this page does not custody assets; always verify the contract address",
+      "footer": "Agent人生 · AGENT人生 — this page does not custody assets; always verify the contract address",
       "nav.wp": "Whitepaper",
 
       "el.addr": "Address",
@@ -391,7 +407,23 @@ Important: never transfer USDT directly to the mint contract. Always approve the
       "ai.s1": "Pick the share count → press \"Generate AI command\" — it is <b>copied automatically</b>.",
       "ai.s2": "Send the command to your own AI agent (Binance Agentic Wallet <code>baw</code> CLI installed, devMode enabled).",
       "ai.s3": "The agent approves and mints with your AI wallet, previewing every transaction and waiting for your confirmation.",
-      "ai.note": "Two ways supported: ① click \"Connect Binance Wallet\" (top-right) to mint directly with your Binance AI wallet (scan QR → confirm in the Binance App); ② or \"Generate AI command\" to let your AI agent mint.",
+      "ai.note": "Two ways supported: ① click \"Connect Binance Wallet\" in the mint box to mint directly with your Binance AI wallet (scan QR → confirm in the Binance App); ② or \"Generate AI command\" to let your AI agent mint.",
+      "sec.title": "Contract Security Check",
+      "sec.verify": "Verify on BscScan",
+      "sec.scoreLabel": "Risk score",
+      "sec.badges": "High 0 · Medium 0 · Info 2",
+      "sec.contract": "Contract",
+      "sec.creator": "Creator / Owner",
+      "sec.liquidity": "At launch",
+      "sec.liquidityV": "tokens + raised USDT injected into the PancakeSwap V2 pair",
+      "sec.summaryTitle": "AI Summary",
+      "sec.summary": "AGENT人生 is a fixed-config ERC20; the mint phase is gated by holding a specified Agent ID NFT and has a hard cap. Each share pays PRICE for 5,250 tokens; at launch the contract injects the equivalent tokens and raised USDT into the PancakeSwap V2 pair. After launch, transfers involving the pair incur a 1% fee.",
+      "sec.taxTitle": "AI Tax Check",
+      "sec.t1": "Buy tax: 1%",
+      "sec.t2": "Sell tax: 1%",
+      "sec.t3": "Transfer tax: 0%",
+      "sec.t4": "Per-wallet cap: 10 mint shares per address; no post-launch token balance limit",
+      "sec.note": "Snapshot from the AVE.ai contract scan — verify the contract source on BscScan before minting.",
 
       "cmd.body": `I have a Binance Agentic Wallet. Please mint {name} for me on BSC (binanceChainId {chain}).{idLine}
 
@@ -443,7 +475,7 @@ If preview reports "execution reverted":
     return s;
   }
 
-  let heroVals = { price: "0.01", perMint: "21,000", symbol: "AGT", limit: "3" };
+  let heroVals = { price: "1", perMint: "21,000", symbol: "AGENT人生", limit: "3" };
   let heroReady = false; // 是否已拿到真实参数（链上读到的或本地缓存的）
 
   // 上次读到的参数缓存，按合约地址存，刷新时先渲染它，避免先显示默认值再跳变
@@ -750,7 +782,7 @@ If preview reports "execution reverted":
     const cAddr = ethers.getAddress($("contract").value.trim());
     const uAddr = ethers.getAddress($("usdt").value.trim());
     const dec = info ? Number(info.usdtDec) : 18;
-    const price = info ? BigInt(info.price) : ethers.parseUnits("0.01", dec);
+    const price = info ? BigInt(info.price) : ethers.parseUnits("1", dec);
     const perMint = info ? Number(ethers.formatUnits(info.perMint, 18)).toLocaleString("en-US") : "21,000";
     const shares = BigInt(count);
     const cost = price * shares; // 实际花费

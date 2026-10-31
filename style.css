@@ -194,6 +194,35 @@ main { max-width: 1120px; margin: 0 auto; padding: 10px 24px 60px; }
 .count-seg button:hover { border-color: #e6b84f; }
 .count-seg button.active { background: #e6b84f; color: #1a1407; border-color: #e6b84f; }
 
+/* 合约安全检测 */
+.sec-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.sec-head h3 { margin: 0; }
+.sec-top { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+.sec-score { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 120px; }
+.sec-ring {
+  width: 96px; height: 96px; border-radius: 50%;
+  background: conic-gradient(#e6b84f 0 40%, #2a3142 40% 100%);
+  display: flex; align-items: center; justify-content: center;
+}
+.sec-ring b {
+  width: 74px; height: 74px; border-radius: 50%; background: #0e1422;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: #e6b84f;
+}
+.sec-score span { font-weight: 600; color: #cdd6e6; }
+.sec-score small { color: #8b96ab; }
+.sec-rows { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 8px; }
+.sec-rows > div {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 9px 12px; background: #0e1422; border: 1px solid #1c2333; border-radius: 10px;
+}
+.sec-rows span { color: #8b96ab; white-space: nowrap; }
+.sec-rows b { color: #e8edf7; text-align: right; font-weight: 600; }
+.sec-rows a { color: #e6b84f; }
+.sec-sub { margin: 16px 0 8px; font-size: 15px; color: #e6b84f; }
+.sec-summary { margin: 0; color: #cdd6e6; line-height: 1.7; }
+.sec-tax { margin: 0; padding-left: 18px; color: #cdd6e6; line-height: 1.9; }
+
 input, select, textarea {
   width: 100%; padding: 11px 13px; border-radius: 11px;
   background: #0b101c; border: 1px solid var(--line); color: var(--text);
