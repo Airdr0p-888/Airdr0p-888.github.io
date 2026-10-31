@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<!-- Render 部署完成后，替换为 https://你的服务.onrender.com/api/agent-wallet -->
-<meta name="agent-wallet-api" content="" />
-<title>Agent AI · Agent ID 专属铸造</title>
+<meta name="agent-wallet-api" content="https://agent-ai-agentic-wallet.onrender.com/api/agent-wallet" />
+<title>Agent人生 · Agent ID 专属铸造</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -21,7 +20,7 @@
   <div class="brand">
     <div class="logo">AI</div>
     <div>
-      <h1>Agent AI <span class="tag">AGT</span></h1>
+      <h1>Agent人生 <span class="tag">AGT</span></h1>
       <p data-i18n="brand.sub">Agent ID 专属铸造 · BSC</p>
     </div>
   </div>
@@ -77,14 +76,12 @@
     <div class="card">
       <h3 data-i18n="card.mint">铸造区</h3>
 
+      <button id="connectBtn" class="btn btn-primary btn-lg" style="width:100%;margin:2px 0 16px" data-i18n="btn.connect">连接币安钱包</button>
+
       <div class="field-row">
         <div class="field">
-          <label data-i18n="label.tokenId">Agent ID 编号（选填）</label>
-          <input id="tokenId" data-i18n-ph="ph.tokenId" placeholder="例如 1234" />
-        </div>
-        <div class="field">
           <label data-i18n="label.count">铸造份数</label>
-          <select id="count"></select>
+          <div id="count" class="count-seg"></div>
           <span class="hint" data-i18n="hint.count">选择要铸造的份数（1–10），生成 AI 指令后由你的 AI 钱包一次性完成授权与铸造</span>
         </div>
       </div>
@@ -98,7 +95,9 @@
 
       <div class="btn-row">
         <button id="genBtn" class="btn btn-primary btn-lg" data-i18n="btn.gen">生成 AI 指令</button>
+        <button id="mintBtn" class="btn btn-primary btn-lg">用币安 AI 钱包铸造</button>
       </div>
+      <div id="wtx" class="hint"></div>
     </div>
 
     <!-- 指令区 -->
@@ -196,16 +195,30 @@
   <div class="card card-warn">
     <h3 data-i18n="card.warn">注意</h3>
     <ul class="notes">
-      <li data-i18n-html="w1">开盘前铸造到的 Agent AI <b>不可转账</b>，需等开盘后才能交易。</li>
+      <li data-i18n-html="w1">开盘前铸造到的 Agent人生 <b>不可转账</b>，需等开盘后才能交易。</li>
       <li data-i18n="w2">每笔交易 AI 都会先 preview，请逐笔看清解析结果与风险再确认。</li>
       <li data-i18n="w3">本页只做地址填写与指令生成，不托管私钥、不代发交易。</li>
     </ul>
   </div>
 </main>
 
-<footer data-i18n="footer">Agent AI · AGT — 本页不托管资产，请自行核对合约地址 · <a href="whitepaper.html" data-i18n="nav.wp">白皮书</a></footer>
+<footer data-i18n="footer">Agent人生 · AGT — 本页不托管资产，请自行核对合约地址 · <a href="whitepaper.html" data-i18n="nav.wp">白皮书</a></footer>
 
 <div id="toast"></div>
+
+<!-- 币安 AI 钱包扫码登录弹层 -->
+<div id="qrModal" class="modal hidden">
+  <div class="modal-box">
+    <h3>连接币安 AI 钱包</h3>
+    <div id="qrBox" class="qr"></div>
+    <p class="hint">配对码：<b id="awPair">——</b></p>
+    <p id="qrMode" class="hint"></p>
+    <a id="wcOpen" class="btn btn-primary" href="#" target="_blank" rel="noopener">打开币安 App</a>
+    <p id="awWait" class="hint"></p>
+    <span id="awBadge" class="badge"></span>
+    <div style="margin-top:14px"><button class="btn btn-ghost" onclick="closeQr()">取消</button></div>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <!-- WalletConnect v2 + 二维码（本地打包，无第三方依赖） -->

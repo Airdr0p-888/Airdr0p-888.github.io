@@ -1,4 +1,4 @@
-/* Agent AI 铸造页：地址填写 → 链上资格检查 → 生成可粘贴给 AI 代理的指令（支持中英切换） */
+/* Agent人生 铸造页：地址填写 → 链上资格检查 → 生成可粘贴给 AI 代理的指令（支持中英切换） */
 (function () {
   "use strict";
 
@@ -20,7 +20,7 @@
   const I18N = {
     zh: {
       "brand.sub": "Agent ID 专属铸造 · BSC",
-      "ticker.text": "Mint 资金 100% 直接注入 LP 底池 · 买卖仅收 1% 税费，全部用于社区营销 · LP 自动锁仓至合约、永久锁定 · 合约零提取权限，安全透明无后门",
+      "ticker.text": "Mint 资金 100% 直接注入 LP 底池 · 买卖仅收 1% 税费，全部用于社区营销 · LP 自动锁仓至合约、永久锁定 · 合约零提取权限，安全透明无后门 · 打满自动开盘",
       "btn.connect": "连接币安钱包",
       "btn.walletMint": "一键铸造（Mint）",
       "wc.hint": "连接持有你 .ai Agent ID 的币安钱包，即可在本页直接铸造（approve + mint 两笔交易）",
@@ -144,7 +144,7 @@
       "w1": "开盘前铸造到的 AGT <b>不可转账</b>，需等开盘后才能交易。",
       "w2": "每笔交易 AI 都会先 preview，请逐笔看清解析结果与风险再确认。",
       "w3": "本页只做地址填写与指令生成，不托管私钥、不代发交易。",
-      "footer": "Agent AI · AGT — 本页不托管资产，请自行核对合约地址",
+      "footer": "Agent人生 · AGT — 本页不托管资产，请自行核对合约地址",
 
       "el.addr": "地址",
       "el.name": "Agent ID 名称 {n}", "el.resolved": "已解析为上方地址",
@@ -185,7 +185,7 @@
       "ai.s1": "选好份数 → 点「生成 AI 指令」，指令会<b>自动复制</b>。",
       "ai.s2": "把指令发给你自己的 AI 代理（需已安装币安 Agentic Wallet 的 <code>baw</code> CLI 并开启 devMode）。",
       "ai.s3": "代理会用你的 AI 钱包完成 approve + mint，每笔都会先 preview 并等你确认。",
-      "ai.note": "Agentic Wallet 是给 AI 代理用的钱包，没有网页连接接口，所以本页无法直接连接它 —— 与 jager.live 的做法一致：网页生成指令，AI 代理执行铸造。",
+      "ai.note": "本页支持两种方式：① 点右上「Connect Binance Wallet」用币安 AI 钱包直接铸造（扫码 → 在币安 App 确认）；② 或点「生成 AI 指令」交给 AI 代理执行。",
 
       "cmd.body": `我有币安 Agentic Wallet，请在 BSC（binanceChainId {chain}）上帮我铸造 {name}。{idLine}
 
@@ -195,29 +195,38 @@
 - 每笔交易都按「preview → 把解析结果和风险给我看 → 等我确认 → \`baw contract-call execute --requestId <这次 preview 返回的 requestId> --json\`」执行。
 - gas 预估加 20%。
 - 上一笔在链上确认成功后，再开始下一笔。
-- 任何一步 preview 报错或被拦截，就停下告诉我，不要改参数重试。
 
-第 1 笔：给 mint 合约授权 {amountText} USDT（授权额度已够可跳过；按 1.02 倍给）
+【执行前必做 · 每次都重新读取链上状态，严禁直接复用上次生成的参数】
+1) 读取合约当前状态（用 ethers 读合约，或让 baw 读）：
+   - launched() 必须为 true，否则 mint 会 revert，请停下来告诉我「mint 未开启」。
+   - PRICE() 当前单价、MAX_PER_WALLET() 与 mintedBy(<你的钱包地址>) 看剩余可铸额度。
+   - 用 AGENT_ID() 指向的注册表（或 SPACE ID 注册表 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F 的 ownerOf(namehash("你的.agent.id"))）确认【当前这个 Agentic Wallet 地址】确实持有 .ai Agent ID。若持有者不是当前钱包，mint 必然 revert —— 请改用持有 Agent ID 的那个钱包，并告诉我。
+2) 用【刚刚读到的 PRICE()】重算：cost = PRICE × {count}；maxCost = cost × 1.1（留 10% 余量，防价格随铸造推进上涨）。若与下面写死的 maxCost 不一致，用新值重新生成下面两笔的调用数据后再 preview，不要沿用旧参数。
+
+第 1 笔：给 mint 合约授权 maxCost USDT（授权额度已够可跳过）
   合约（USDT）: {uAddr}
-  approve(spender = {cAddr}, amount = {amountText} USDT)
+  approve(spender = {cAddr}, amount = maxCost USDT)
   调用数据: {approveData}
   baw contract-call preview --binanceChainId {chain} --to {uAddr} --inputData {approveData} --json
 
 第 2 笔：调用 mint 合约的 mint(uint256 shares, address referrer, uint256 maxCost)，一次性买 {count} 份（全部份数一笔完成，不要拆成多次）
   shares   = {count}
-  referrer = 0x0000000000000000000000000000000000000000（无推荐人）
-  maxCost  = {amountText} USDT（实际花费 {costText} USDT，按 1.02 倍设上限）
+  referrer = 0x0000000000000000000000000000000000000000（无推荐人；若合约要求非零推荐人，请告诉我）
+  maxCost  = 见上方重算值（实际花费约 {costText} USDT）
   合约: {cAddr}
   调用数据: {mintData}
   baw contract-call preview --binanceChainId {chain} --to {cAddr} --inputData {mintData} --json
 
-本次共 {count} 份 = {costText} USDT，预计得到 {totalText} {name}（每份 {priceText} USDT 换 {perMint} {name}）。
-注意：绝不能直接把 USDT 转到 mint 合约，必须 approve 后调用 mint；只有 {cAddr} 收款。`,
+若 preview 报 execution reverted：
+- 先读 revert 原因（如 maxCost too low / not launched / not eligible / cap reached）。
+- 若是 maxCost 不够，用最新 PRICE 提高 maxCost 后重新生成调用数据再 preview（这属于按链上状态重算，不是盲目重试）。
+- 若是 not eligible，说明当前钱包不持有 Agent ID，停下来告诉我。
+- 绝不能直接把 USDT 转到 mint 合约；只有 {cAddr} 收款。`,
     },
 
     en: {
       "brand.sub": "Agent ID exclusive mint · BSC",
-      "ticker.text": "100% of every mint flows straight into the LP pool · just 1% buy/sell tax, fully used for community marketing · LP auto-locked into the contract forever · the contract has zero withdrawal powers — safe and transparent",
+      "ticker.text": "100% of every mint flows straight into the LP pool · just 1% buy/sell tax, fully used for community marketing · LP auto-locked into the contract forever · the contract has zero withdrawal powers — safe and transparent · trading auto-opens when mint is fully sold out",
       "btn.connect": "Connect Binance Wallet",
       "btn.walletMint": "Mint now",
       "wc.hint": "Connect the Binance wallet that holds your .ai Agent ID to mint directly on this page (approve + mint)",
@@ -340,7 +349,7 @@ Important: never transfer USDT directly to the mint contract. Always approve the
       "w1": "AGT minted before launch <b>cannot be transferred</b> until trading opens.",
       "w2": "Your AI previews every transaction — read each parsed result and risk note before confirming.",
       "w3": "This page only builds the command. It never holds your keys or sends transactions for you.",
-      "footer": "Agent AI · AGT — this page does not custody assets; always verify the contract address",
+      "footer": "Agent人生 · AGT — this page does not custody assets; always verify the contract address",
       "nav.wp": "Whitepaper",
 
       "el.addr": "Address",
@@ -382,7 +391,7 @@ Important: never transfer USDT directly to the mint contract. Always approve the
       "ai.s1": "Pick the share count → press \"Generate AI command\" — it is <b>copied automatically</b>.",
       "ai.s2": "Send the command to your own AI agent (Binance Agentic Wallet <code>baw</code> CLI installed, devMode enabled).",
       "ai.s3": "The agent approves and mints with your AI wallet, previewing every transaction and waiting for your confirmation.",
-      "ai.note": "Agentic Wallet is a wallet for AI agents — it has no web connection interface, so this page cannot connect to it directly. Same approach as jager.live: the page builds the command, the AI agent executes the mint.",
+      "ai.note": "Two ways supported: ① click \"Connect Binance Wallet\" (top-right) to mint directly with your Binance AI wallet (scan QR → confirm in the Binance App); ② or \"Generate AI command\" to let your AI agent mint.",
 
       "cmd.body": `I have a Binance Agentic Wallet. Please mint {name} for me on BSC (binanceChainId {chain}).{idLine}
 
@@ -392,24 +401,33 @@ Rules:
 - For every transaction: preview → show me the parsed result and risks → wait for my confirmation → \`baw contract-call execute --requestId <requestId from that preview> --json\`.
 - Add 20% to the gas estimate.
 - Only start the next transaction after the previous one is confirmed on chain.
-- If any preview errors out or gets blocked, stop and tell me. Do not retry with changed parameters.
 
-Tx 1: approve {amountText} USDT to the mint contract (skip if allowance is already enough; 1.02x buffer)
+[Before any transaction — re-read on-chain state every time; never reuse previously generated parameters]
+1) Read the contract's current state (via ethers, or let baw read it):
+   - launched() must be true, otherwise mint reverts. Stop and tell me "mint not launched".
+   - PRICE() (current unit price), MAX_PER_WALLET() and mintedBy(<your wallet address>) to see remaining quota.
+   - Using AGENT_ID()'s registry (or the SPACE ID registry 0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F, ownerOf(namehash("your.agent.id"))), confirm that THIS Agentic Wallet address actually holds the .ai Agent ID. If the holder is a different wallet, mint will revert — switch to the wallet that holds the Agent ID and tell me.
+2) Recompute with the PRICE() you just read: cost = PRICE × {count}; maxCost = cost × 1.1 (10% headroom against price steps). If it differs from the maxCost written below, regenerate the calldata for both transactions with the new value before previewing. Do not use stale parameters.
+
+Tx 1: approve maxCost USDT to the mint contract (skip if allowance is already enough)
   USDT contract: {uAddr}
-  approve(spender = {cAddr}, amount = {amountText} USDT)
+  approve(spender = {cAddr}, amount = maxCost USDT)
   Input data: {approveData}
   baw contract-call preview --binanceChainId {chain} --to {uAddr} --inputData {approveData} --json
 
 Tx 2: call mint(uint256 shares, address referrer, uint256 maxCost) on the mint contract — {count} shares in a SINGLE transaction (all shares at once, do NOT split into multiple mints)
   shares   = {count}
-  referrer = 0x0000000000000000000000000000000000000000 (no referrer)
-  maxCost  = {amountText} USDT (actual cost {costText} USDT; 1.02x cap)
+  referrer = 0x0000000000000000000000000000000000000000 (no referrer; if the contract requires a non-zero referrer, tell me)
+  maxCost  = see recompute above (actual cost ~ {costText} USDT)
   Contract: {cAddr}
   Input data: {mintData}
   baw contract-call preview --binanceChainId {chain} --to {cAddr} --inputData {mintData} --json
 
-Total: {count} shares = {costText} USDT, expected {totalText} {name} ({priceText} USDT for {perMint} {name} per share).
-Important: never transfer USDT directly to the mint contract. Always approve then call mint. {cAddr} is the only address that accepts payment.`,
+If preview reports "execution reverted":
+- Read the revert reason (e.g. maxCost too low / not launched / not eligible / cap reached).
+- If maxCost is too low, raise it using the latest PRICE and regenerate the calldata, then preview again (this is recomputing from chain state, not a blind retry).
+- If not eligible, the current wallet does not hold the Agent ID — stop and tell me.
+- Never transfer USDT directly to the mint contract. Always approve then call mint. {cAddr} is the only address that accepts payment.`,
     },
   };
 
@@ -448,18 +466,22 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     } catch {}
   }
 
-  // 铸造次数 1~10
+  // 铸造次数 1~10（点选按钮组）
   function buildCountOptions() {
-    const sel = $("count");
-    const keep = sel.value || "1";
-    sel.innerHTML = "";
+    const box = $("count");
+    box.innerHTML = "";
     for (let i = 1; i <= 10; i++) {
-      const o = document.createElement("option");
-      o.value = String(i);
-      o.textContent = LANG === "zh" ? `${i} 次` : `${i} time${i > 1 ? "s" : ""}`;
-      sel.appendChild(o);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = String(i);
+      b.dataset.v = String(i);
+      if (i === selectedCount) b.classList.add("active");
+      b.addEventListener("click", () => {
+        selectedCount = i;
+        box.querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.v === String(i)));
+      });
+      box.appendChild(b);
     }
-    sel.value = keep;
   }
 
   function paintHero() {
@@ -503,6 +525,7 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   let account = null;
   let walletProvider = null; // 连上的钱包（注入的或 WalletConnect）
   let wcProvider = null;
+  let selectedCount = 1; // 点选的铸造份数（1–10）
   let lastCheck = null;
   let resolved = null; // { addr, name }
 
@@ -698,7 +721,7 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     $("elig").innerHTML = row(false, t("el.loading"), "");
     try {
       const i = info || (await loadInfo());
-      const count = Number($("count").value);
+      const count = selectedCount;
       const need = i.price * BigInt(count);
       const nft = new ethers.Contract(i.nft, ["function balanceOf(address) view returns (uint256)"], provider);
 
@@ -723,7 +746,7 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   /* ---------- 生成 AI 指令 ---------- */
 
   function buildCommand() {
-    const count = Number($("count").value);
+    const count = selectedCount;
     const cAddr = ethers.getAddress($("contract").value.trim());
     const uAddr = ethers.getAddress($("usdt").value.trim());
     const dec = info ? Number(info.usdtDec) : 18;
@@ -731,11 +754,11 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     const perMint = info ? Number(ethers.formatUnits(info.perMint, 18)).toLocaleString("en-US") : "21,000";
     const shares = BigInt(count);
     const cost = price * shares; // 实际花费
-    const maxCost = (cost * 102n) / 100n; // 授权与 maxCost 都按 1.02 倍，防插队 / 价格波动
+    const maxCost = (cost * 110n) / 100n; // 授权与 maxCost 都按 1.1 倍留余量（AI 执行前会用实时 PRICE 重算）
     const amountText = Number(ethers.formatUnits(maxCost, dec)).toLocaleString("en-US", { maximumFractionDigits: 6 });
     const costText = Number(ethers.formatUnits(cost, dec)).toLocaleString("en-US", { maximumFractionDigits: 6 });
     const priceText = Number(ethers.formatUnits(price, dec)).toLocaleString("en-US", { maximumFractionDigits: 6 });
-    const name = info && info.name ? info.name : "Agent AI";
+    const name = info && info.name ? info.name : "Agent人生";
     const totalText = Number(ethers.formatUnits(BigInt(info ? info.perMint : 0n) * shares, 18)).toLocaleString("en-US");
 
     // approve(mint 合约, maxCost)
@@ -744,10 +767,7 @@ Important: never transfer USDT directly to the mint contract. Always approve the
     const mintData = MINT_SIG + ethers.AbiCoder.defaultAbiCoder()
       .encode(["uint256", "address", "uint256"], [shares, ethers.ZeroAddress, maxCost]).slice(2);
 
-    const tid = $("tokenId").value.trim();
-    const ids = [];
-    if (tid) ids.push(`${LANG === "zh" ? "我的 Agent ID 编号" : "My Agent ID number"}: #${tid}`);
-    const idLine = ids.length ? "\n" + ids.join("\n") : "";
+    const idLine = "";
     const vars = {
       chain: String(CHAIN_ID), idLine, amountText, uAddr, approveData,
       cAddr, mintData, mintSig: MINT_SIG, count: String(count), priceText,
@@ -985,6 +1005,18 @@ Important: never transfer USDT directly to the mint contract. Always approve the
             if (!hash) throw new Error("等待币安 App 确认交易");
             return hash;
           }
+          // 其余 eth_* 方法（estimateGas / gasPrice / getTransactionCount / maxPriorityFeePerGas 等）转发到 BSC 公共 RPC，
+          // 让 ethers 能完成交易填充（populateTransaction），否则 sendTransaction 会直接抛错
+          if (method.startsWith("eth_")) {
+            for (const rpc of RPCS) {
+              try {
+                const response = await fetch(rpc, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+                const json = await response.json();
+                if (!json.error) return json.result;
+              } catch {}
+            }
+            throw new Error("BSC RPC unavailable for " + method);
+          }
           throw new Error("Unsupported wallet method: " + method);
         },
       };
@@ -1156,9 +1188,9 @@ Important: never transfer USDT directly to the mint contract. Always approve the
 
     const signer = await bp.getSigner();
     const from = await signer.getAddress();
-    const shares = BigInt($("count").value || "1");
+    const shares = BigInt(selectedCount);
     const cost = BigInt(info.price) * shares;
-    const maxCost = (cost * 102n) / 100n; // 与 AI 指令一致：1.02 倍
+    const maxCost = (cost * 110n) / 100n; // 与 AI 指令一致：1.1 倍余量
     const cAddr = ethers.getAddress($("contract").value.trim());
     const uAddr = ethers.getAddress($("usdt").value.trim());
     const wtx = $("wtx");
@@ -1361,6 +1393,7 @@ Important: never transfer USDT directly to the mint contract. Always approve the
   if ($("checkBtn")) $("checkBtn").addEventListener("click", check);
   $("genBtn").addEventListener("click", generate);
   $("copyBtn").addEventListener("click", copyCmd);
+  $("mintBtn").addEventListener("click", mintWithWallet);
 
   // 先用缓存渲染（刷新时与上次完全一致，不会闪），再静默用链上数据校对
   const cached = loadHeroCache($("contract").value.trim());

@@ -185,6 +185,15 @@ main { max-width: 1120px; margin: 0 auto; padding: 10px 24px 60px; }
 .field-row { display: flex; gap: 12px; }
 .field-row .field { flex: 1; }
 
+/* 铸造份数：点选按钮组 */
+.count-seg { display: flex; flex-wrap: wrap; gap: 8px; }
+.count-seg button {
+  min-width: 40px; padding: 9px 12px; cursor: pointer; font: inherit; font-weight: 600;
+  border: 1px solid #2a3142; background: #0e1422; color: #cdd6e6; border-radius: 10px; transition: .15s;
+}
+.count-seg button:hover { border-color: #e6b84f; }
+.count-seg button.active { background: #e6b84f; color: #1a1407; border-color: #e6b84f; }
+
 input, select, textarea {
   width: 100%; padding: 11px 13px; border-radius: 11px;
   background: #0b101c; border: 1px solid var(--line); color: var(--text);
