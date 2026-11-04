@@ -3,9 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="agent-wallet-api" content="https://agent-ai-agentic-wallet.onrender.com/api/agent-wallet" />
 <title>牛来 NIU LAI · AgentLife V3 铸造</title>
 <link rel="icon" type="image/png" href="avatar.png" />
 <script src="https://unpkg.com/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+<!-- vendor/wc.js 除 WalletConnect 外还提供 WCMint.qrSvg（二维码生成），币安 AI 钱包扫码依赖它，勿删 -->
 <script src="vendor/wc.js"></script>
 <style>
   :root{
@@ -83,6 +85,12 @@
   .modal-box h3{font-size:16px;margin-bottom:12px;}
   .qr{width:240px;height:240px;margin:0 auto;background:#fff;border-radius:10px;padding:8px;}
   .qr svg{width:100%;height:100%;}
+  .pair{font-size:14px;margin:12px 0 2px;}
+  .pair b{color:var(--accent);letter-spacing:2px;font-family:"Roboto Mono",Menlo,monospace;}
+  #aiCmd{width:100%;margin-top:12px;background:#0c0e18;color:#c7cdda;border:1px solid var(--border);
+         border-radius:9px;padding:12px;font-size:13px;line-height:1.7;resize:vertical;}
+  .openBtn{display:block;background:#F0B90B;color:#111;font-weight:700;text-align:center;
+           border-radius:10px;padding:12px;margin-top:12px;text-decoration:none;font-size:15px;}
   .modal-box .hint{font-size:12px;color:var(--muted);margin:12px 0 0;}
 </style>
 </head>
@@ -112,7 +120,7 @@
       <div class="stat"><label>单价</label><div class="v" id="vPrice">—</div></div>
       <div class="stat"><label>已铸造 / 上限</label><div class="v" id="vMinted">—</div></div>
       <div class="stat"><label>我的已铸造</label><div class="v" id="vMy">—</div></div>
-      <div class="stat"><label>买卖税</label><div class="v">3% 可配</div></div>
+      <div class="stat"><label>买卖税</label><div class="v">3% 全销毁</div></div>
     </div>
   </section>
 
@@ -122,13 +130,12 @@
   <section class="mint">
     <h2 style="font-size:17px;">铸造 MINT</h2>
     <label class="fld">合约地址（部署后的 V3 地址）</label>
-    <input id="addr" value="0xC4B917b662bA8384DD0744b834c846A6eFBC0836" />
+    <input id="addr" value="0x813ce8ca8a533CEA578e01145457f8d5FFd7bCEa" />
 
-    <button id="connectBtn">币安 App 扫码连接</button>
-    <button id="injectedBtn" class="ghost" style="font-size:13px;padding:10px;">或使用浏览器钱包（备用）</button>
+    <button id="connectBtn">币安 AI 钱包扫码</button>
 
     <label class="fld">铸造份数</label>
-    <input id="shares" type="number" min="1" placeholder="例如 10" />
+    <input id="shares" type="number" min="1" value="1" />
 
     <label class="fld">推荐人（可选，留空则无）</label>
     <input id="referrer" placeholder="0x... 或留空" />
@@ -138,6 +145,16 @@
 
     <button id="mintBtn" disabled>铸造</button>
     <div class="log" id="log"></div>
+  </section>
+
+  <hr/>
+
+  <!-- 币安 Agent 一键铸造指令 -->
+  <section class="mint">
+    <h2 style="font-size:17px;">币安 Agent 一键铸造指令</h2>
+    <p style="color:var(--muted);font-size:13px;margin:8px 0 0;">复制下方指令，粘贴到币安 App 中已连接 Agentic Wallet 的 AI 对话框，AI 会自动用你的钱包完成铸造（无需连接本站、无需提供私钥）。</p>
+    <textarea id="aiCmd" class="mono" readonly rows="12" spellcheck="false"></textarea>
+    <button id="copyAi" class="ghost">复制指令</button>
   </section>
 
   <hr/>
@@ -153,10 +170,7 @@
       <h3>02 / LIQUIDITY · 流动性</h3>
       <p>支付 BNB，代币一部分进你钱包，另一部分与 BNB 同步注入 PancakeSwap 池子，失败整笔回滚。开盘前代币不可转移，售罄后自动开放。</p>
     </div>
-    <div class="step">
-      <h3>03 / LP 发部署钱包</h3>
-      <p>V3 发射的 LP <span class="accent">直接发到部署钱包</span>（非黑洞），owner 可设接收地址；买卖各 3% 税（回流 / 分红 / 销毁可自定义，单笔上限 3%）分红以 USDT 发放。</p>
-    </div>
+
   </section>
 
   <hr/>
@@ -188,10 +202,7 @@
       <summary>3% 税里的“销毁”会减少总量吗？</summary>
       <p>不会。销毁部分转入黑洞地址 0x000…dEaD，但代币总供应量固定，黑洞余额增加不改变上限。</p>
     </details>
-    <details>
-      <summary>V3 的 LP 去哪了？</summary>
-      <p>V3 发射的 LP 直接发送到部署钱包（可在部署时或部署后由 owner 设置接收地址），不同于 V1 的锁黑洞。</p>
-    </details>
+
     <details>
       <summary>没有币安 Agent ID 能铸造吗？</summary>
       <p>不能。铸造入口会校验你的地址是否持有币安 Agent ID NFT，未持有将被 revert。</p>
@@ -205,13 +216,14 @@
   <div class="modal-box">
     <h3>币安 App 扫码登录</h3>
     <div id="qrBox" class="qr"></div>
-    <p class="hint">用币安 App 扫上方二维码，确认配对码一致后授权连接。</p>
+    <p class="hint pair">配对码：<b id="awPair">——</b></p>
+    <p class="hint">用币安 App 扫上方二维码，核对配对码一致后确认登录。</p>
+    <a id="wcOpen" class="openBtn" href="#" target="_blank" rel="noopener">打开币安登录</a>
     <button id="qrCancel" class="ghost">取消</button>
   </div>
 </div>
 
 <script>
-const WC_PID = "d1d20d01deca8b04d0c243954db38bd8";
 const CHAIN_ID = 56;
 const ZERO = "0x0000000000000000000000000000000000000000";
 const BNB_DEC = 18n;
@@ -240,66 +252,120 @@ async function switchToBSC(){
   catch(e){ if(e.code===4902) await window.ethereum.request({ method:"wallet_addEthereumChain", params:[{chainId:"0x38", chainName:"BNB Smart Chain", rpcUrls:["https://bsc-dataseed.bnbchain.org"], nativeCurrency:{name:"BNB",symbol:"BNB",decimals:18}, blockExplorerUrls:["https://bscscan.com"]}] }); else throw e; }
 }
 
-async function connect(){
-  // 默认：币安 App 扫码（WalletConnect），不再优先用浏览器插件钱包
-  await connectWC();
-}
+// 注：普通钱包扫码（WalletConnect）与浏览器插件钱包两个入口已移除，仅保留「币安 AI 钱包扫码」。
 
-// 备用：浏览器插件钱包（币安钱包插件 / MetaMask 等）
-async function connectInjected(){
-  if(!window.ethereum) return log("未检测到浏览器钱包插件", "err");
-  try {
-    await switchToBSC();
-    eip = window.ethereum;
-    provider = new ethers.BrowserProvider(eip);
-    await provider.send("eth_requestAccounts", []);
-    signer = await provider.getSigner();
-    account = await signer.getAddress();
-    onConnected();
-    await load();
-  } catch(e){ log("连接失败：" + (e.reason || e.message), "err"); }
-}
+const RPCS = [
+  "https://bsc-dataseed.bnbchain.org",
+  "https://bsc-dataseed1.defibit.io",
+  "https://bsc-dataseed1.ninicoin.io",
+  "https://rpc.ankr.com/bsc"
+];
+let agenticSession = "";
+let qrAborted = false;
 
-async function connectWC(){
-  const W = window.WCMint;
-  if(!W || !W.EthereumProvider) return log("扫码组件未加载（vendor/wc.js）", "err");
-  log("正在生成二维码…");
+function decodeRevert(data){
   try {
-    wcProvider = await W.EthereumProvider.init({
-      projectId: WC_PID, chains: [CHAIN_ID], optionalChains: [CHAIN_ID], showQrModal: false,
-      methods: ["eth_sendTransaction","eth_requestAccounts","eth_accounts","eth_chainId","wallet_switchEthereumChain"],
-      events: ["chainChanged","accountsChanged"],
-    });
-    wcProvider.on("display_uri", (arg) => {
-      let uri = typeof arg === "string" ? arg : (arg && (arg.uri || arg.data || arg.params)) || "";
-      if(uri && typeof uri !== "string") uri = String(uri.uri || uri.data || uri);
-      showQr(uri);
-    });
-    // WalletConnect 该构建需先 connect() 建立配对会话，再取账号；request() 直接调会报 "call connect() before request()"
-    let accs;
-    if (typeof wcProvider.connect === "function") {
-      accs = await wcProvider.connect();
-    } else {
-      accs = await wcProvider.request({ method: "eth_requestAccounts" });
-    }
+    if (typeof data !== "string" || !data.startsWith("0x")) return "";
+    if (data.startsWith("0x08c379a0")) return ethers.AbiCoder.defaultAbiCoder().decode(["string"], "0x" + data.slice(10))[0];
+    if (data.startsWith("0x4e487b71")) { const c = BigInt("0x" + data.slice(10)); return "Panic(" + c + ")"; }
+  } catch {}
+  return "";
+}
+async function rpcCall(method, params){
+  let lastMsg = "", lastData = "";
+  for (const rpc of RPCS){
+    try {
+      const r = await fetch(rpc, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ jsonrpc:"2.0", id:1, method, params }) });
+      const j = await r.json();
+      if (!j.error) return j.result;
+      lastMsg = (j.error && j.error.message) || "";
+      lastData = typeof (j.error && j.error.data) === "string" ? j.error.data : "";
+      if (lastData) break;
+    } catch(e){ lastMsg = String((e && e.message) || e); }
+  }
+  const reason = decodeRevert(lastData);
+  if (reason) throw new Error("合约拒绝: " + reason);
+  if (/revert/i.test(lastMsg)) throw new Error("合约拒绝: " + lastMsg);
+  throw new Error(method + " 请求失败: " + (lastMsg || "所有 BSC 公共节点均不可用"));
+}
+function agentApiUrl(){
+  return (document.querySelector('meta[name="agent-wallet-api"]')?.content || "").trim().replace(/\/$/,"");
+}
+async function agentCall(action, extra = {}){
+  const r = await fetch(agentApiUrl(), { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ action, sessionId: agenticSession, ...extra }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) throw new Error(j.error || "Agentic Wallet request failed");
+  return j;
+}
+function nested(obj, keys){
+  if (!obj || typeof obj !== "object") return null;
+  for (const key of keys) if (typeof obj[key] === "string" && obj[key]) return obj[key];
+  for (const v of Object.values(obj)) { const f = nested(v, keys); if (f) return f; }
+  return null;
+}
+async function connectAgentic(){
+  try {
+    qrAborted = false;
+    log("正在获取币安 Agentic Wallet 登录二维码…");
+    const login = await agentCall("login");
+    agenticSession = login.sessionId;
+    const data = login.result || {};
+    const url = nested(data, ["urlForWeb","qrCodeUrl"]);
+    const qrCodeId = nested(data, ["qrCodeId"]);
+    const pair = nested(data, ["pairingCode"]);
+    if (!url || !qrCodeId) throw new Error("未收到币安登录二维码");
+    showQr(url, pair || "——");
+    await agentCall("confirm", { qrCodeId });
+    if (qrAborted) throw new Error("已取消登录");
+    const wallet = await agentCall("wallet");
+    const address = wallet.address;
+    const agenticProvider = {
+      async request({ method, params = [] }) {
+        if (method === "eth_chainId") return "0x38";
+        if (method === "eth_accounts" || method === "eth_requestAccounts") return [address];
+        if (["eth_blockNumber","eth_getTransactionReceipt","eth_getTransactionByHash","eth_call","eth_getBalance","eth_gasPrice","eth_estimateGas","eth_getTransactionCount","eth_maxPriorityFeePerGas","eth_feeHistory"].includes(method)) return rpcCall(method, params);
+        if (method === "eth_sendTransaction") {
+          const tx = params[0];
+          const preview = await agentCall("preview", { tx: { from: address, to: tx.to, value: tx.value || "0", inputData: tx.data || "0x" } });
+          const requestId = nested(preview.result, ["requestId"]);
+          if (!requestId) throw new Error("交易预览未返回 requestId");
+          const executed = await agentCall("execute", { requestId });
+          const hash = nested(executed.result, ["txHash","transactionHash","hash"]);
+          if (!hash) throw new Error("等待币安 App 确认交易");
+          return hash;
+        }
+        if (method.startsWith("eth_")) return rpcCall(method, params);
+        throw new Error("Unsupported wallet method: " + method);
+      }
+    };
     closeQr();
-    eip = wcProvider;
-    provider = new ethers.BrowserProvider(wcProvider);
+    provider = new ethers.BrowserProvider(agenticProvider);
     signer = await provider.getSigner();
-    account = accs[0] || await signer.getAddress();
+    account = address;
     onConnected();
     await load();
   } catch(e){
     closeQr();
-    log("扫码连接失败：" + (e.reason || e.message || e), "err");
+    log("Agentic 连接失败：" + (e.message || e), "err");
   }
 }
 
-function showQr(uri){
+function showQr(uri, pair){
   const box = $("qrBox");
-  if(window.WCMint && window.WCMint.qrSvg && uri){ try { box.innerHTML = window.WCMint.qrSvg(uri); } catch { box.textContent = uri; } }
-  else box.textContent = uri;
+  if(window.WCMint && window.WCMint.qrSvg){
+    try { box.innerHTML = window.WCMint.qrSvg(uri); } catch { box.textContent = uri; }
+  } else box.textContent = uri;
+  if(pair === undefined){
+    const tm = typeof uri === "string" && uri.startsWith("wc:") ? uri.match(/^wc:([0-9a-fA-F]+)@/) : null;
+    pair = tm ? tm[1].slice(0,6).toUpperCase() : "——";
+  }
+  $("awPair").textContent = pair;
+  const open = $("wcOpen");
+  open.href = (typeof uri === "string" && uri.startsWith("wc:")) ? "https://walletconnect.com/wc?uri=" + encodeURIComponent(uri) : (uri || "#");
   $("qrModal").classList.remove("hidden");
+  if(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) && typeof uri === "string" && uri.startsWith("wc:")){
+    try { window.open(open.href, "_blank"); } catch {}
+  }
 }
 function closeQr(){
   $("qrModal").classList.add("hidden");
@@ -315,7 +381,7 @@ async function load(){
   const a = $("addr").value.trim();
   if(!ethers.isAddress(a)) return log("请先填写有效的合约地址", "err");
   $("addrShow").textContent = a;
-  const p = provider || (readOnly = readOnly || new ethers.JsonRpcProvider(RPC));
+  const p = signer || provider || (readOnly = readOnly || new ethers.JsonRpcProvider(RPC));
   contract = new ethers.Contract(a, ABI, p);
   try {
     const [price, cap, minted, myShares, nftAddr] = await Promise.all([
@@ -324,8 +390,10 @@ async function load(){
     ]);
     const priceBnb = ethers.formatUnits(price, BNB_DEC);
     $("vPrice").textContent = priceBnb + " BNB";
+    mintPriceVal = price;
     $("vMinted").textContent = minted.toString() + " / " + cap.toString();
     $("vMy").textContent = myShares.toString();
+    updateAi();
     if(account){
       const nft = new ethers.Contract(nftAddr, NFT_ABI, p);
       const bal = await nft.balanceOf(account);
@@ -342,6 +410,29 @@ function updateCost(){
   const m = $("vPrice").textContent.match(/([\d.]+)\s*BNB/);
   const shares = Number($("shares").value);
   if(m && shares>0) $("costTip").textContent = `预计支付：${(parseFloat(m[1])*shares).toFixed(6)} BNB`;
+  updateAi();
+}
+
+// 生成可复制的「币安 Agent 一键铸造」指令
+let mintPriceVal = 0n;
+function updateAi(){
+  const a = $("addr").value.trim();
+  const shares = $("shares").value.trim();
+  const s = BigInt(shares || "0");
+  const cost = (s>0n && mintPriceVal>0n) ? (s*mintPriceVal).toString() : "（请先填份数并等待单价加载）";
+  const costBnb = (s>0n && mintPriceVal>0n) ? ethers.formatUnits(s*mintPriceVal, BNB_DEC) : "?";
+  $("aiCmd").value =
+`请使用当前已连接的币安 Agent 钱包，在 BNB Smart Chain（链 ID 56）上调用铸造合约完成铸造：
+
+- 合约地址：${a}
+- 调用函数：mint(uint256 shares, address referrer, uint256 maxCost)
+- shares = ${shares || "（填份数）"}（铸造份数）
+- referrer = 0x0000000000000000000000000000000000000000（无推荐人）
+- maxCost = ${cost}（wei，等于应付 BNB 上限）
+- 交易需附带 BNB value = ${cost}（约 ${costBnb} BNB）
+- 前置条件：你的钱包需持有币安 Agent ID NFT（0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F），否则会 revert。
+
+请预览交易详情并签名确认，无需连接任何第三方网站、无需提供私钥。`;
 }
 
 async function doMint(){
@@ -367,12 +458,13 @@ function copy(text){
   navigator.clipboard && navigator.clipboard.writeText(text);
 }
 
-$("connectBtn").onclick = connect;
-$("injectedBtn").onclick = connectInjected;
+$("connectBtn").onclick = connectAgentic;
+$("copyAi").onclick = () => copy($("aiCmd").value);
+$("qrCancel").onclick = () => { qrAborted = true; closeQr(); };
+updateAi();
 $("addr").onchange = () => { if(account) load(); else load(); };
 $("shares").oninput = updateCost;
 $("mintBtn").onclick = doMint;
-$("qrCancel").onclick = closeQr;
 $("copyAddr").onclick = () => copy($("addrShow").textContent);
 $("copyNft").onclick = () => copy("0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F");
 window.ethereum && window.ethereum.on && window.ethereum.on("accountsChanged", () => location.reload());
